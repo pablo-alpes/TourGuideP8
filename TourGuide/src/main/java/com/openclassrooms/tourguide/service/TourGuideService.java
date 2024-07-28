@@ -89,11 +89,16 @@ public class TourGuideService {
 	}
 
 	public VisitedLocation trackUserLocation(User user) {
+		ExecutorService executor = Executors.newCachedThreadPool();
+		Future<VisitedLocation> futureVisited = executor.submit(
+		new Callable<VisitedLocation>() {
 		VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
 		user.addToVisitedLocations(visitedLocation);
 		rewardsService.calculateRewards(user);
-		return visitedLocation;
-	}
+		});
+		
+		return (VisitedLocation) futureVisited.get();
+}
 
 	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
 		List<Attraction> nearbyAttractions = new ArrayList<>();
