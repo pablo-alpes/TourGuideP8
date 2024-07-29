@@ -92,12 +92,18 @@ public class TourGuideService {
 		ExecutorService executor = Executors.newCachedThreadPool();
 		Future<VisitedLocation> futureVisited = executor.submit(
 		new Callable<VisitedLocation>() {
+		@Override
+		public VisitedLocation call() {
 		VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
 		user.addToVisitedLocations(visitedLocation);
 		rewardsService.calculateRewards(user);
+		return visitedLocation; }
 		});
 		
-		return (VisitedLocation) futureVisited.get();
+		return (VisitedLocation) futureVisited.get(1, TimeUnit.SECONDS);
+		
+		//TODO-- Check exceptions ?
+		
 }
 
 	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
