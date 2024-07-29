@@ -15,6 +15,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -59,7 +60,7 @@ public class TourGuideService {
 		return user.getUserRewards();
 	}
 
-	public VisitedLocation getUserLocation(User user) {
+	public VisitedLocation getUserLocation(User user) throws ExecutionException, InterruptedException {
 		VisitedLocation visitedLocation = (user.getVisitedLocations().size() > 0) ? user.getLastVisitedLocation()
 				: trackUserLocation(user);
 		return visitedLocation;
@@ -88,17 +89,34 @@ public class TourGuideService {
 		return providers;
 	}
 
-	public VisitedLocation trackUserLocation(User user) {
-		ExecutorService executor = Executors.newCachedThreadPool();
-		Future<VisitedLocation> futureVisited = executor.submit(
-		new Callable<VisitedLocation>() {
-		VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
-		user.addToVisitedLocations(visitedLocation);
-		rewardsService.calculateRewards(user);
+	public VisitedLocation trackUserLocation(User user) throws ExecutionException, InterruptedException {
+			VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
+			user.addToVisitedLocations(visitedLocation);
+			rewardsService.calculateRewards(user);
+			return visitedLocation;
+	}
+
+	//technical doc of different approaches :
+	// from https://krishaniindrachapa.medium.com/parallel-processing-for-optimisation-in-java-8f68077d3605
+	public List<VisitedLocation> trackUserLocations(List<User> users) throws ExecutionException, InterruptedException {
+		List<CompletableFuture<VisitedLocation>> allFutures = new ArrayList<>();
+
+		users.stream().parallel().forEach(user->{
+			CompletableFuture<VisitedLocation> future = CompletableFuture.supplyAsync(() -> {
+				VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
+				user.addToVisitedLocations(visitedLocation);
+				rewardsService.calculateRewards(user);
+				return visitedLocation;
+			});
+			allFutures.add(future);
 		});
-		
-		return (VisitedLocation) futureVisited.get();
-}
+
+		CompletableFuture<List<VisitedLocation>> listFuture = CompletableFuture.allOf(allFutures.toArray(new CompletableFuture[0]))
+				.thenApply(v -> allFutures.stream().parallel()
+						.map(CompletableFuture::join)
+						.collect(Collectors.toList()));
+		return listFuture.join();
+	}
 
 	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
 		List<Attraction> nearbyAttractions = new ArrayList<>();

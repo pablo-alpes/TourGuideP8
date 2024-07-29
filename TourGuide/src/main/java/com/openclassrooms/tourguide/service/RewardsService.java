@@ -1,7 +1,9 @@
 package com.openclassrooms.tourguide.service;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.springframework.stereotype.Service;
 
@@ -17,66 +19,72 @@ import com.openclassrooms.tourguide.user.UserReward;
 public class RewardsService {
     private static final double STATUTE_MILES_PER_NAUTICAL_MILE = 1.15077945;
 
-	// proximity in miles
+    // proximity in miles
     private int defaultProximityBuffer = 10;
-	private int proximityBuffer = defaultProximityBuffer;
-	private int attractionProximityRange = 200;
-	private final GpsUtil gpsUtil;
-	private final RewardCentral rewardsCentral;
-	
-	public RewardsService(GpsUtil gpsUtil, RewardCentral rewardCentral) {
-		this.gpsUtil = gpsUtil;
-		this.rewardsCentral = rewardCentral;
-	}
-	
-	public void setProximityBuffer(int proximityBuffer) {
-		this.proximityBuffer = proximityBuffer;
-	}
-	
-	public void setDefaultProximityBuffer() {
-		proximityBuffer = defaultProximityBuffer;
-	}
-	
-	public void calculateRewards(User user) {
-			List<VisitedLocation> userLocations = user.getVisitedLocations();
-			List<Attraction> attractions = gpsUtil.getAttractions();
+    private int proximityBuffer = defaultProximityBuffer;
+    private int attractionProximityRange = 200;
+    private final GpsUtil gpsUtil;
+    private final RewardCentral rewardsCentral;
 
-			for (VisitedLocation visitedLocation : userLocations) {
-                for (Attraction attraction : attractions) { //TODO -- Fail safe iterator to build into
-                    boolean attractionFound = user.getUserRewards().stream().anyMatch(r -> r.attraction.attractionName.equals(attraction.attractionName));
-                    boolean rewardNearBy = (nearAttraction(visitedLocation, attraction));
+    public RewardsService(GpsUtil gpsUtil, RewardCentral rewardCentral) {
+        this.gpsUtil = gpsUtil;
+        this.rewardsCentral = rewardCentral;
+    }
 
-                    if (!attractionFound && rewardNearBy) {
-                        user.addUserReward(new UserReward(visitedLocation, attraction, getRewardPoints(attraction, user)));
-                    }
-                }
-			}
-		}
-	
-	public boolean isWithinAttractionProximity(Attraction attraction, Location location) {
-		return getDistance(attraction, location) > attractionProximityRange ? false : true;
-	}
-	
-	private boolean nearAttraction(VisitedLocation visitedLocation, Attraction attraction) {
-		return getDistance(attraction, visitedLocation.location) > proximityBuffer ? false : true;
-	}
-	
-	private int getRewardPoints(Attraction attraction, User user) {
-		return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
-	}
-	
-	public double getDistance(Location loc1, Location loc2) {
+    public void setProximityBuffer(int proximityBuffer) {
+        this.proximityBuffer = proximityBuffer;
+    }
+
+    public void setDefaultProximityBuffer() {
+        proximityBuffer = defaultProximityBuffer;
+    }
+
+    public void calculateRewards(User user) {
+        List<VisitedLocation> userLocations = new ArrayList<VisitedLocation>(user.getVisitedLocations());
+        List<Attraction> attractions = new ArrayList<Attraction>(gpsUtil.getAttractions());
+
+        //System.out.println("user rewards "+user.getUserRewards().size());
+
+        userLocations.stream().forEach(visitedLocation -> {
+            attractions.stream().forEach(attraction ->{
+            boolean attractionNotFound = (user.getUserRewards().stream().noneMatch(r -> r.attraction.attractionName.equals(attraction.attractionName)));
+            boolean rewardNearBy = (nearAttraction(visitedLocation, attraction));
+
+            if (attractionNotFound && rewardNearBy) {
+                int rewardPoints = getRewardPoints(attraction, user);
+                //System.out.println("rewards to be added " + attraction.attractionName + " " + rewardPoints);
+                user.addUserReward(new UserReward(visitedLocation, attraction, rewardPoints));
+                //System.out.println("user rewards "+userRewardList.size());
+            }
+                });
+        });
+    }
+
+
+    public boolean isWithinAttractionProximity(Attraction attraction, Location location) {
+        return getDistance(attraction, location) > attractionProximityRange ? false : true;
+    }
+
+    private boolean nearAttraction(VisitedLocation visitedLocation, Attraction attraction) {
+        return getDistance(attraction, visitedLocation.location) > proximityBuffer ? false : true;
+    }
+
+    private int getRewardPoints(Attraction attraction, User user) {
+        return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
+    }
+
+    public double getDistance(Location loc1, Location loc2) {
         double lat1 = Math.toRadians(loc1.latitude);
         double lon1 = Math.toRadians(loc1.longitude);
         double lat2 = Math.toRadians(loc2.latitude);
         double lon2 = Math.toRadians(loc2.longitude);
 
         double angle = Math.acos(Math.sin(lat1) * Math.sin(lat2)
-                               + Math.cos(lat1) * Math.cos(lat2) * Math.cos(lon1 - lon2));
+                + Math.cos(lat1) * Math.cos(lat2) * Math.cos(lon1 - lon2));
 
         double nauticalMiles = 60 * Math.toDegrees(angle);
         double statuteMiles = STATUTE_MILES_PER_NAUTICAL_MILE * nauticalMiles;
         return statuteMiles;
-	}
+    }
 
 }
