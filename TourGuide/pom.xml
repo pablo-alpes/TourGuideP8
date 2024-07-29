@@ -47,6 +47,7 @@
 			<scope>test</scope>
 		</dependency>
 
+		<!-- Dependency injection of jar packaged applications -->
 		<dependency>
 			<groupId>gpsUtil</groupId>
 			<artifactId>gpsUtil</artifactId>
