@@ -7,18 +7,13 @@ import com.openclassrooms.tourguide.user.UserReward;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
+import org.hibernate.validator.internal.constraintvalidators.bv.number.bound.MaxValidatorForDouble;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -118,15 +113,38 @@ public class TourGuideService {
 		return listFuture.join();
 	}
 
-	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
+/**	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
 		List<Attraction> nearbyAttractions = new ArrayList<>();
-		for (Attraction attraction : gpsUtil.getAttractions()) {
+		List<Attraction> allAttractions = new ArrayList<>(gpsUtil.getAttractions());
+		for (Attraction attraction : allAttractions) {
 			if (rewardsService.isWithinAttractionProximity(attraction, visitedLocation.location)) {
 				nearbyAttractions.add(attraction);
 			}
 		}
 
 		return nearbyAttractions;
+	}
+ */
+
+	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation, List<Attraction> allAttractions) throws NumberFormatException {
+		List<Double> distances = allAttractions.stream().
+				map(attraction -> (rewardsService.getDistance(new Location(attraction.latitude,attraction.longitude), visitedLocation.location)))
+				.toList();
+
+		Map<Attraction, Double> consolidated = new HashMap<>();
+		for (int i = 0; i < distances.size(); i++) {
+			consolidated.put(allAttractions.get(i), distances.get(i));
+		}
+
+		List<Attraction> top5 = consolidated.entrySet().stream().sorted(Map.Entry.comparingByValue())
+				.map(item->item.getKey())
+				.limit(5).toList();
+
+		//List<Double> top5d = consolidated.entrySet().stream().sorted(Map.Entry.comparingByValue())
+		//		.map(item->item.getValue())
+		//		.limit(5).toList();
+
+		return top5;
 	}
 
 	private void addShutDownHook() {

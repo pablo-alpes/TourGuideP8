@@ -3,6 +3,7 @@ package com.openclassrooms.tourguide;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import gpsUtil.GpsUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -22,6 +23,9 @@ public class TourGuideController {
 
 	@Autowired
 	TourGuideService tourGuideService;
+
+    @Autowired
+    GpsUtil gpsUtil;
 	
     @RequestMapping("/")
     public String index() {
@@ -34,8 +38,8 @@ public class TourGuideController {
     }
     
     //  TODO: Change this method to no longer return a List of Attractions.
- 	//  Instead: Get the closest five tourist attractions to the user - no matter how far away they are.
- 	//  Return a new JSON object that contains:
+ 	//  Instead: Get the closest five tourist attractions to the user - no matter how far away they are. -- DONE
+ 	//  Return a new JSON object that contains: -- All data is contained, needs to wrap into a JSON now
     	// Name of Tourist attraction, 
         // Tourist attractions lat/long, 
         // The user's location lat/long, 
@@ -45,7 +49,8 @@ public class TourGuideController {
     @RequestMapping("/getNearbyAttractions") 
     public List<Attraction> getNearbyAttractions(@RequestParam String userName) throws ExecutionException, InterruptedException {
     	VisitedLocation visitedLocation = tourGuideService.getUserLocation(getUser(userName));
-    	return tourGuideService.getNearByAttractions(visitedLocation);
+        List<Attraction> allAttractions = gpsUtil.getAttractions();
+    	return tourGuideService.getNearByAttractions(visitedLocation, allAttractions);
     }
     
     @RequestMapping("/getRewards") 
