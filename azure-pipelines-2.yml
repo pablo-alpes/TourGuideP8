@@ -16,20 +16,17 @@ stages:
   - job: Build
     displayName: Build Maven Project
     steps:
-    - task: Maven@4
+    - task: Maven@3
+      displayName: 'Maven Package'
       inputs:
-        mavenPomFile: '../pom.xml'
-        publishJUnitResults: false
+        mavenPomFile: 'TourGuide/pom.xml'
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
         javaHomeOption: 'JDKVersion'
         mavenVersionOption: 'Default'
         mavenAuthenticateFeed: false
         effectivePomSkip: false
         sonarQubeRunAnalysis: false
-    - task: Maven@3
-      displayName: 'Maven Package'
-      inputs:
-        mavenPomFile: 'pom.xml'
-        goals: 'package'
     - task: CopyFiles@2
       displayName: 'Copy Files to artifact staging directory'
       inputs:
