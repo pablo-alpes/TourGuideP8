@@ -16,11 +16,6 @@ stages:
   - job: Build
     displayName: Build Maven Project
     steps:
-    - task: JavaToolInstaller@0
-      inputs:
-        versionSpec: '8'
-        jdkArchitectureOption: 'x86'
-        jdkSourceOption: 'PreInstalled'
     - task: Maven@3
       displayName: 'Maven Package'
       inputs:
@@ -36,5 +31,6 @@ stages:
       inputs:
         pathToPublish: $(Build.ArtifactStagingDirectory)
         artifactName: SampleSpringBootBuild
+        
 
 
