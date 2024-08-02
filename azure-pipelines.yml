@@ -6,10 +6,7 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/java
 
 trigger:
-- master
-
-pool:
-  vmImage: ubuntu-latest
+- dev
 
 pool: Default
 
