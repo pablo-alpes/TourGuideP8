@@ -1,0 +1,26 @@
+#Pipeline build for the application TourGuide P8
+
+trigger:
+- master
+
+pool:
+  vmImage: ubuntu-latest
+#standby for the activation of multiparalel
+
+steps:
+- task: Maven@3
+  inputs:
+    mavenPomFile: 'pom.xml'
+    mavenOptions: '-Xmx3072m'
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '1.8'
+    jdkArchitectureOption: 'x64'
+    publishJUnitResults: true
+    testResultsFiles: '**/surefire-reports/TEST-*.xml'
+    goals: 'package'
+    allowBrokenSymlinks: 
+
+#next tasks: 
+# package the jar file
+# storage the artifact
+# deploy our artifact in the 2 environmlents, test and prod with the test included
