@@ -1,9 +1,7 @@
 package com.openclassrooms.tourguide.service;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.springframework.stereotype.Service;
 
@@ -40,13 +38,12 @@ public class RewardsService {
     }
 
     public void calculateRewards(User user) {
+        //TODO -- Check regression
         List<VisitedLocation> userLocations = new ArrayList<VisitedLocation>(user.getVisitedLocations());
         List<Attraction> attractions = new ArrayList<Attraction>(gpsUtil.getAttractions());
 
-        //System.out.println("user rewards "+user.getUserRewards().size());
-
-        userLocations.stream().forEach(visitedLocation -> {
-            attractions.stream().forEach(attraction ->{
+        userLocations.forEach(visitedLocation -> {
+            attractions.forEach(attraction ->{
             boolean attractionNotFound = (user.getUserRewards().stream().noneMatch(r -> r.attraction.attractionName.equals(attraction.attractionName)));
             boolean rewardNearBy = (nearAttraction(visitedLocation, attraction));
 

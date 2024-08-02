@@ -1,8 +1,10 @@
 package com.openclassrooms.tourguide;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import com.openclassrooms.tourguide.DTO.JsonReponse;
 import gpsUtil.GpsUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,6 +28,9 @@ public class TourGuideController {
 
     @Autowired
     GpsUtil gpsUtil;
+
+    @Autowired
+    JsonReponse jsonReponse;
 	
     @RequestMapping("/")
     public String index() {
@@ -47,10 +52,13 @@ public class TourGuideController {
         // The reward points for visiting each Attraction.
         //    Note: Attraction reward points can be gathered from RewardsCentral
     @RequestMapping("/getNearbyAttractions") 
-    public List<Attraction> getNearbyAttractions(@RequestParam String userName) throws ExecutionException, InterruptedException {
+    public List<Attraction> getNearbyAttractions(@RequestParam String userName) throws ExecutionException, InterruptedException, IOException {
     	VisitedLocation visitedLocation = tourGuideService.getUserLocation(getUser(userName));
+        User user = tourGuideService.getUser(userName);
         List<Attraction> allAttractions = gpsUtil.getAttractions();
-    	return tourGuideService.getNearByAttractions(visitedLocation, allAttractions);
+        jsonReponse.replyJson(tourGuideService.getNearByAttractions(visitedLocation, allAttractions, user));
+    	//return tourGuideService.getNearByAttractions(visitedLocation, allAttractions);
+        return allAttractions;
     }
     
     @RequestMapping("/getRewards") 
