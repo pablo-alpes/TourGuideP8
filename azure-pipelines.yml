@@ -8,7 +8,8 @@
 trigger:
 - dev
 
-pool: Azure Pipelines
+pool: 
+  vmImage: 'ubuntu-latest'
 
 stages:
 - stage: Build
@@ -18,8 +19,6 @@ stages:
     displayName: Build Maven Project
     steps:
     - task: Maven@3
-      #env:
-      #  JAVA_HOME: /Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/Home
       displayName: 'Maven Package'
       inputs:
         mavenPomFile: 'pom.xml'
