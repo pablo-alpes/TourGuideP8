@@ -1,0 +1,83 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+
+trigger:
+- master
+
+variables:
+  buildConfiguration: 'Release'
+
+stages:
+- stage: Build
+  jobs:
+  - job: BuildJob
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: Maven@3
+      inputs:
+        mavenPomFile: 'TourGuide/pom.xml'
+        mavenOptions: '-Xmx3072m'
+        javaHomeOption: 'JDKVersion'
+        jdkVersionOption: '1.17'
+        jdkArchitectureOption: 'x64'
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+        goals: 'clean package'
+    
+    - task: CopyFiles@2
+      inputs:
+        SourceFolder: '$(System.DefaultWorkingDirectory)/TourGuide/target'
+        Contents: '*.?(war|jar)'
+        TargetFolder: '$(build.artifactStagingDirectory)'
+    
+    - publish: $(Build.ArtifactStagingDirectory)
+      artifact: drop
+
+- stage: DeployToTest
+  condition: and(succeeded(), not(startsWith(variables['Build.SourceBranch'], 'refs/pull/')))
+  jobs:
+  - deployment: DeployToTest
+    displayName: Deploy to Test
+    environment: Test
+    pool: 
+      vmImage: 'ubuntu-latest'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: drop
+          
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: 'pablo-alpes'
+              appName: 'TourGuide'
+              appType: 'webApp'
+              package: '$(Pipeline.Workspace)/drop/*.jar'
+              appSettings: |
+                -JAVA_OPTS -Dspring.profiles.active=test
+
+- stage: DeployToProduction
+  condition: and(succeeded(), not(startsWith(variables['Build.SourceBranch'], 'refs/pull/')))
+  jobs:
+  - deployment: DeployToProduction
+    displayName: Deploy to Production
+    environment: Production
+    pool: 
+      vmImage: 'ubuntu-latest'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: drop
+          
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: 'pablo-alpes'
+              appName: 'tourguide'
+              appType: 'webApp'
+              package: '$(Pipeline.Workspace)/drop/*.jar'
+              appSettings: |
+                -JAVA_OPTS -Dspring.profiles.active=prod
