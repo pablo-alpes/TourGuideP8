@@ -8,26 +8,24 @@ trigger:
 
 pool:
   vmImage: ubuntu-latest
-  
+
 
 stages:
 - stage: Build
-  displayName: 'Maven Package'
-  jobs:
+  displayName: Build stage
+  jobs:  
   - job: Build
-  displayName: Build Maven Project
-  -steps:
-    - task: Maven@4
+    displayName: Build Maven Project
+    steps:
+    - task: Maven@3
+      #env:
+      #  JAVA_HOME: /Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/Home
+      displayName: 'Maven Package'
       inputs:
         mavenPomFile: 'pom.xml'
-        publishJUnitResults: false
-        javaHomeOption: 'JDKVersion'
-        mavenVersionOption: 'Default'
-        mavenAuthenticateFeed: false
-        effectivePomSkip: false
-        sonarQubeRunAnalysis: false
+        goals: 'package'
     - task: CopyFiles@2
-      displayName: 'Copy Files to artifact to dev directory'
+      displayName: 'Copy Files to artifact staging directory'
       inputs:
         SourceFolder: '$(System.DefaultWorkingDirectory)'
         Contents: '**/target/*.?(war|jar)'
