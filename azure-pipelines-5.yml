@@ -32,8 +32,8 @@ stages:
         publishJUnitResults: true
         testResultsFiles: '**/surefire-reports/TEST-*.xml'
         javaHomeOption: 'JDKVersion'
-        mavenVersionOption: 'Default'
-        mavenAuthenticateFeed: false
+        mavenVersionOption: 'Default' 
+        jdkDirectory: '/usr/local/openjdk-17'
         effectivePomSkip: false
         sonarQubeRunAnalysis: false
 
