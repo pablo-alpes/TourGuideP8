@@ -2,6 +2,7 @@ package com.openclassrooms.tourguide.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.*;
 
 import org.springframework.stereotype.Service;
 
@@ -15,6 +16,8 @@ import com.openclassrooms.tourguide.user.UserReward;
 
 @Service
 public class RewardsService {
+
+
     private static final double STATUTE_MILES_PER_NAUTICAL_MILE = 1.15077945;
 
     // proximity in miles
@@ -23,6 +26,8 @@ public class RewardsService {
     private int attractionProximityRange = 200;
     private final GpsUtil gpsUtil;
     private final RewardCentral rewardsCentral;
+    private ExecutorService executor = Executors.newFixedThreadPool(1000);
+    //https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Executors.html#newFixedThreadPool-int-
 
     public RewardsService(GpsUtil gpsUtil, RewardCentral rewardCentral) {
         this.gpsUtil = gpsUtil;
@@ -37,24 +42,29 @@ public class RewardsService {
         proximityBuffer = defaultProximityBuffer;
     }
 
-    public void calculateRewards(User user) {
-        //TODO -- Check regression
-        List<VisitedLocation> userLocations = new ArrayList<VisitedLocation>(user.getVisitedLocations());
-        List<Attraction> attractions = new ArrayList<Attraction>(gpsUtil.getAttractions());
+    public CompletableFuture<?> calculateRewards(User user) {
+        //the return type is changed to make it testable and given by return async
+        final List<VisitedLocation> userLocations = new ArrayList<>(user.getVisitedLocations());
+        final List<Attraction> attractions = gpsUtil.getAttractions();
 
-        userLocations.forEach(visitedLocation -> {
-            attractions.forEach(attraction ->{
-            boolean attractionNotFound = (user.getUserRewards().stream().noneMatch(r -> r.attraction.attractionName.equals(attraction.attractionName)));
-            boolean rewardNearBy = (nearAttraction(visitedLocation, attraction));
-
-            if (attractionNotFound && rewardNearBy) {
-                int rewardPoints = getRewardPoints(attraction, user);
-                //System.out.println("rewards to be added " + attraction.attractionName + " " + rewardPoints);
-                user.addUserReward(new UserReward(visitedLocation, attraction, rewardPoints));
-                //System.out.println("user rewards "+userRewardList.size());
-            }
+        List<CompletableFuture<?>> futureList = new ArrayList<>();
+        futureList.add(
+         CompletableFuture.runAsync(() -> { //we don't produce any result, so we take runAsync and not supplyAsync
+            //technical notes on runasyn and supply async: https://www.baeldung.com/java-completablefuture-runasync-supplyasync
+            userLocations.parallelStream().forEach(visitedLocation -> {
+                attractions.parallelStream().forEach(attraction -> {
+                    if (nearAttraction(visitedLocation, attraction)) {
+                            user.addUserReward(new UserReward(visitedLocation, attraction, getRewardPoints(attraction, user)));
+                    }
                 });
-        });
+            });
+        }, executor)); //we add this executor to change the default fork join to gain speed
+        return CompletableFuture.allOf(futureList.toArray(CompletableFuture[]::new));
+
+    }
+
+    public int getRewardPoints(Attraction attraction, User user) {
+        return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
     }
 
 
@@ -64,10 +74,6 @@ public class RewardsService {
 
     private boolean nearAttraction(VisitedLocation visitedLocation, Attraction attraction) {
         return getDistance(attraction, visitedLocation.location) > proximityBuffer ? false : true;
-    }
-
-    private int getRewardPoints(Attraction attraction, User user) {
-        return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
     }
 
     public double getDistance(Location loc1, Location loc2) {

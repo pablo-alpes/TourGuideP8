@@ -51,6 +51,8 @@ public class Tracker extends Thread {
                     tourGuideService.trackUserLocation(u);
                 } catch (ExecutionException | InterruptedException e) {
                     throw new RuntimeException(e);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
                 }
             });
 			stopWatch.stop();

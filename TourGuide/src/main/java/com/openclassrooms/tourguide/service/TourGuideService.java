@@ -60,7 +60,7 @@ public class TourGuideService {
         return user.getUserRewards();
     }
 
-    public VisitedLocation getUserLocation(User user) throws ExecutionException, InterruptedException {
+    public VisitedLocation getUserLocation(User user) throws Exception {
         VisitedLocation visitedLocation = (user.getVisitedLocations().size() > 0) ? user.getLastVisitedLocation()
                 : trackUserLocation(user);
         return visitedLocation;
@@ -113,7 +113,7 @@ public class TourGuideService {
         return t -> seen.add(keyExtractor.apply(t));
     }
 
-    public VisitedLocation trackUserLocation(User user) throws ExecutionException, InterruptedException {
+    public VisitedLocation trackUserLocation(User user) throws Exception {
         VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
         user.addToVisitedLocations(visitedLocation);
         rewardsService.calculateRewards(user);
@@ -124,22 +124,31 @@ public class TourGuideService {
     // from https://krishaniindrachapa.medium.com/parallel-processing-for-optimisation-in-java-8f68077d3605
     public List<VisitedLocation> trackUserLocations(List<User> users) throws ExecutionException, InterruptedException {
         List<CompletableFuture<VisitedLocation>> allFutures = new ArrayList<>();
+        ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()*10); // passing a specific executor to supply async to optimize performance
 
-        users.stream().parallel().forEach(user -> {
-            CompletableFuture<VisitedLocation> future = CompletableFuture.supplyAsync(() -> {
-                VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
-                user.addToVisitedLocations(visitedLocation);
-                rewardsService.calculateRewards(user);
-                return visitedLocation;
+        try {
+            users.stream().parallel().forEach(user -> {
+                CompletableFuture<VisitedLocation> future = CompletableFuture.supplyAsync(() -> {
+                    VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
+                    user.addToVisitedLocations(visitedLocation);
+                    try {
+                        rewardsService.calculateRewards(user);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                    return visitedLocation;
+                }, executorService);
+                allFutures.add(future);
             });
-            allFutures.add(future);
-        });
 
-        CompletableFuture<List<VisitedLocation>> listFuture = CompletableFuture.allOf(allFutures.toArray(new CompletableFuture[0]))
-                .thenApply(v -> allFutures.stream().parallel()
-                        .map(CompletableFuture::join)
-                        .collect(Collectors.toList()));
-        return listFuture.join();
+            CompletableFuture<List<VisitedLocation>> listFuture = CompletableFuture.allOf(allFutures.toArray(new CompletableFuture[0]))
+                    .thenApply(v -> allFutures.stream().parallel()
+                            .map(CompletableFuture::join)
+                            .collect(Collectors.toList()));
+            return listFuture.join();
+        } finally {
+            executorService.shutdown();
+        }
     }
 
     /**

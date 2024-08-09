@@ -70,9 +70,10 @@ public class User {
 	}
 	
 	public void addUserReward(UserReward userReward) {
-		//if(userRewards.stream().filter(r -> !r.attraction.attractionName.equals(userReward.attraction)).count() == 0) { // TODO--Is this redundant?
+		if(userRewards.stream().noneMatch(r -> r.attraction.attractionName.equals(userReward.attraction.attractionName))) {
+			//If duplication of the attraction name then no need to add again
 			userRewards.add(userReward);
-		//}
+		}
 	}
 	
 	public List<UserReward> getUserRewards() {

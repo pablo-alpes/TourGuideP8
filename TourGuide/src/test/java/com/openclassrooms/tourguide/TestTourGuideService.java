@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class TestTourGuideService {
 
 	@Test
-	public void getUserLocation() throws ExecutionException, InterruptedException {
+	public void getUserLocation() throws Exception {
 		GpsUtil gpsUtil = new GpsUtil();
 		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
 		InternalTestHelper.setInternalUserNumber(0);
@@ -81,7 +81,7 @@ public class TestTourGuideService {
 	}
 
 	@Test
-	public void trackUser() throws ExecutionException, InterruptedException {
+	public void trackUser() throws Exception {
 		GpsUtil gpsUtil = new GpsUtil();
 		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
 		InternalTestHelper.setInternalUserNumber(0);
@@ -96,7 +96,7 @@ public class TestTourGuideService {
 	}
 
 	@Test
-	public void getNearbyAttractions() throws ExecutionException, InterruptedException {
+	public void getNearbyAttractions() throws Exception {
 		GpsUtil gpsUtil = new GpsUtil();
 		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
 		InternalTestHelper.setInternalUserNumber(0);
@@ -115,7 +115,7 @@ public class TestTourGuideService {
 	}
 
 	@Test
-	public void Top5ClosestDestinations() throws ExecutionException, InterruptedException {
+	public void Top5ClosestDestinations() throws Exception {
 		GpsUtil gpsUtil = new GpsUtil();
 		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
 		InternalTestHelper.setInternalUserNumber(0);
@@ -133,7 +133,7 @@ public class TestTourGuideService {
 	}
 
 	@Test
-	public void jsonOutputForTop5Closest() throws ExecutionException, InterruptedException, IOException {
+	public void jsonOutputForTop5Closest() throws Exception {
 		JsonReponse jsonReponse = new JsonReponse();
 
 		//ARRANGE for the attractions MAP reply

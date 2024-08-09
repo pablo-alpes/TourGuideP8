@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +22,7 @@ import com.openclassrooms.tourguide.user.UserReward;
 public class TestRewardsService {
 
 	@Test
-	public void userGetRewards() throws ExecutionException, InterruptedException {
+	public void userGetRewards() throws Exception {
 		GpsUtil gpsUtil = new GpsUtil();
 		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
 
@@ -47,9 +46,8 @@ public class TestRewardsService {
 		assertTrue(rewardsService.isWithinAttractionProximity(attraction, attraction));
 	}
 
-	// TODO -- Regression found
 	@Test
-	public void nearAllAttractions() {
+	public void nearAllAttractions() throws Exception {
 		GpsUtil gpsUtil = new GpsUtil();
 		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
 		rewardsService.setProximityBuffer(Integer.MAX_VALUE);
