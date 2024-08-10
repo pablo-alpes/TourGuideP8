@@ -1,0 +1,62 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+  branches:
+    include:
+    - dev
+
+pr:
+  branches:
+    include:
+    - dev
+
+variables:
+  # Common Variables
+  # azureSubscription: 'your-azure-subscription'
+ # resourceGroup: 'your-resource-group'
+ #  devAppName: 'your-dev-web-app-name'
+ # prodAppName: 'your-prod-web-app-name'
+ # packagePath: 'target/*.jar'
+
+jobs:
+- job: build
+  displayName: Build and Test
+  pool:
+    vmImage: 'ubuntu-latest'
+
+  steps:
+  - task: UseJavaVersion@1
+    inputs:
+      versionSpec: '17'
+      jdkArchitecture: 'x64'
+
+  - task: Maven@3
+    inputs:
+      mavenPomFile: './TourGuide/pom.xml'
+      goals: 'clean install'
+      options: '-DskipTests=true'
+
+  - task: Maven@3
+    inputs:
+      mavenPomFile: './TourGuide/pom.xml'
+      goals: 'test'
+
+- job: deploy
+  displayName: Deploy to Azure
+  dependsOn: build
+  pool:
+    vmImage: 'ubuntu-latest'
+  condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/dev'), eq(variables['Build.SourceBranch'], 'refs/heads/main')))
+
+  steps:
+  - task: AzureRmWebAppDeployment@4
+    inputs:
+      azureSubscription: $(azureSubscription)
+      appType: 'webApp'
+      packageForLinux: $(packagePath)
+      deployToSlotOrASE: false
+      resourceGroupName: $(resourceGroup)
+      WebAppName: $[eq(variables['Build.SourceBranch'], 'refs/heads/dev') ? variables['devAppName'] : variables['prodAppName']]
