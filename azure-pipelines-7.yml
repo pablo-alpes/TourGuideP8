@@ -28,6 +28,7 @@ stages:
       displayName: 'Maven Package'
       inputs:
         mavenPomFile: 'TourGuide/pom.xml'
+        goals: 'package -DskipTests'
         publishJUnitResults: true
         testResultsFiles: '**/surefire-reports/TEST-*.xml'
         javaHomeOption: 'Path'
@@ -35,7 +36,8 @@ stages:
         mavenVersionOption: 'Default'
         mavenAuthenticateFeed: false
         effectivePomSkip: false
-        sonarQubeRunAnalysis: false
+        sonarQubeRunAnalysis: true
+        sqMavenPluginVersionChoice: 'latest'
 
     - task: CopyFiles@2
       displayName: 'Copy Files to artifact staging directory'
