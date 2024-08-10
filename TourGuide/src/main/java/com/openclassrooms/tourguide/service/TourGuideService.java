@@ -1,5 +1,6 @@
 package com.openclassrooms.tourguide.service;
 
+import com.openclassrooms.tourguide.TourGuideModule;
 import com.openclassrooms.tourguide.helper.InternalTestHelper;
 import com.openclassrooms.tourguide.tracker.Tracker;
 import com.openclassrooms.tourguide.user.User;
@@ -38,7 +39,6 @@ public class TourGuideService {
     private final TripPricer tripPricer = new TripPricer();
     public final Tracker tracker;
     boolean testMode = true;
-    private RewardCentral rewardsCentral;
 
     public TourGuideService(GpsUtil gpsUtil, RewardsService rewardsService) {
         this.gpsUtil = gpsUtil;
@@ -195,15 +195,10 @@ public class TourGuideService {
 
         Map<Attraction, UserExtraInfo> consolidated = new HashMap<>();
         for (int i = 0; i < distances.size(); i++) {
-            int reward;
             double userLongitude = i < allAttractions.size() ? user.getLastVisitedLocation().location.latitude : null;
             double userLatitude = i < allAttractions.size() ? user.getLastVisitedLocation().location.longitude : null;
-            try {
-                reward = rewardsCentral.getAttractionRewardPoints(allAttractions.get(i).attractionId, visitedLocation.userId);
-            }
-            catch (Exception e) {
-                reward = 0;
-            }
+            int reward = rewardsService.getRewardPoints(allAttractions.get(i), user);
+
             consolidated.put(allAttractions.get(i), new UserExtraInfo(
                                 distances.get(i),
                     reward,

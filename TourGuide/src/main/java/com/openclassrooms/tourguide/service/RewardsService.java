@@ -1,8 +1,8 @@
 package com.openclassrooms.tourguide.service;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
@@ -49,18 +49,17 @@ public class RewardsService {
 
         List<CompletableFuture<?>> futureList = new ArrayList<>();
         futureList.add(
-         CompletableFuture.runAsync(() -> { //we don't produce any result, so we take runAsync and not supplyAsync
-            //technical notes on runasyn and supply async: https://www.baeldung.com/java-completablefuture-runasync-supplyasync
-            userLocations.parallelStream().forEach(visitedLocation -> {
-                attractions.parallelStream().forEach(attraction -> {
-                    if (nearAttraction(visitedLocation, attraction)) {
-                            user.addUserReward(new UserReward(visitedLocation, attraction, getRewardPoints(attraction, user)));
-                    }
-                });
-            });
-        }, executor)); //we add this executor to change the default fork join to gain speed
+                CompletableFuture.runAsync(() -> { //we don't produce any result, so we take runAsync and not supplyAsync
+                    //technical notes on runasyn and supply async: https://www.baeldung.com/java-completablefuture-runasync-supplyasync
+                    userLocations.parallelStream().forEach(visitedLocation -> {
+                        attractions.parallelStream().forEach(attraction -> {
+                            if (nearAttraction(visitedLocation, attraction)) {
+                                user.addUserReward(new UserReward(visitedLocation, attraction, getRewardPoints(attraction, user)));
+                            }
+                        });
+                    });
+                }, executor)); //we add this executor to change the default fork join to gain speed
         return CompletableFuture.allOf(futureList.toArray(CompletableFuture[]::new));
-
     }
 
     public int getRewardPoints(Attraction attraction, User user) {
