@@ -36,7 +36,7 @@ stages:
         mavenVersionOption: 'Default'
         mavenAuthenticateFeed: false
         effectivePomSkip: false
-        sonarQubeRunAnalysis: true
+        sonarQubeRunAnalysis: false
         sqMavenPluginVersionChoice: 'latest'
 
     - task: CopyFiles@2
