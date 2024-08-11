@@ -1,0 +1,33 @@
+# Sync
+trigger:
+  branches:
+    include:
+      - dev
+
+pr:
+  branches:
+    include:
+      - dev
+
+resources:
+  repositories:
+    - repository: tourGuideP8Dev
+      type: github
+      name: pablo-alpes/TourGuideP8/
+      ref: refs/heads/dev
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- checkout: githubRepo
+  displayName: 'Checkout Code from GitHub'
+
+- script: |
+    echo "Adding Azure DevOps remote"
+    git remote add azure https://dev.azure.com/pablo-miranda0404/TourGuideP8/_git/TourGuide
+    echo "Fetching from GitHub"
+    git fetch origin
+    echo "Pushing changes to Azure DevOps"
+    git push azure dev
+  displayName: 'Sync GitHub to Azure DevOps'
