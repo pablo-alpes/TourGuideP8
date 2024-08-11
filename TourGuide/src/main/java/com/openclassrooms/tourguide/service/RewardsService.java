@@ -44,16 +44,16 @@ public class RewardsService {
 
     public CompletableFuture<?> calculateRewards(User user) {
         //the return type is changed to make it testable and given by return async
-        final List<VisitedLocation> userLocations = new ArrayList<>(user.getVisitedLocations());
+        final List<VisitedLocation> userLocations = new ArrayList<VisitedLocation>(user.getVisitedLocations());
         final List<Attraction> attractions = gpsUtil.getAttractions();
 
         List<CompletableFuture<?>> futureList = new ArrayList<>();
         futureList.add(
                 CompletableFuture.runAsync(() -> { //we don't produce any result, so we take runAsync and not supplyAsync
                     //technical notes on runasyn and supply async: https://www.baeldung.com/java-completablefuture-runasync-supplyasync
-                    userLocations.parallelStream().forEach(visitedLocation -> {
-                        attractions.parallelStream().forEach(attraction -> {
-                            if (nearAttraction(visitedLocation, attraction)) {
+                    userLocations.forEach(visitedLocation -> {
+                        attractions.forEach(attraction -> {
+                            if (!(attraction.attractionName.equals(visitedLocation.location)) & nearAttraction(visitedLocation, attraction)) {
                                 user.addUserReward(new UserReward(visitedLocation, attraction, getRewardPoints(attraction, user)));
                             }
                         });

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import org.junit.jupiter.api.Test;
 
@@ -55,7 +56,9 @@ public class TestRewardsService {
 		InternalTestHelper.setInternalUserNumber(1);
 		TourGuideService tourGuideService = new TourGuideService(gpsUtil, rewardsService);
 
-		rewardsService.calculateRewards(tourGuideService.getAllUsers().get(0));
+		User user = tourGuideService.getAllUsers().get(0);
+		rewardsService.calculateRewards(user).get(); //needs to wait for the futures to complete
+
 		List<UserReward> userRewards = tourGuideService.getUserRewards(tourGuideService.getAllUsers().get(0));
 		tourGuideService.tracker.stopTracking();
 
