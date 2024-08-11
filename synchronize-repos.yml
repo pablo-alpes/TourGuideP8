@@ -15,12 +15,13 @@ resources:
       type: github
       name: pablo-alpes/TourGuideP8/
       ref: refs/heads/dev
+      endpoint: pablo-alpes
 
 pool:
   vmImage: 'ubuntu-latest'
 
 steps:
-- checkout: githubRepo
+- checkout: https://github.com/pablo-alpes/TourGuideP8.git
   displayName: 'Checkout Code from GitHub'
 
 - script: |
