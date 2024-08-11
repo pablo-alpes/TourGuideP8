@@ -35,13 +35,15 @@ stages:
     - task: Maven@3
       displayName: 'Maven Package'
       inputs:
-        mavenPomFile: './TourGuide/pom.xml'
-        goals: 'package -DskipTests'
-        javaHomeOption: 'Path'
-        jdkDirectory: '/usr/lib/jvm/java-17-openjdk-amd64'
+        mavenPomFile: 'TourGuide/pom.xml'
         publishJUnitResults: true
         testResultsFiles: '**/surefire-reports/TEST-*.xml'
+        javaHomeOption: 'Path'
+        jdkDirectory: '/usr/lib/jvm/java-17-openjdk-amd64'
         mavenVersionOption: 'Default'
+        mavenAuthenticateFeed: false
+        effectivePomSkip: false
+        sonarQubeRunAnalysis: false
 
     - task: Docker@2
       displayName: 'Build and Push Docker Image into ACR'
