@@ -2,8 +2,11 @@
 trigger:
   branches:
     include:
-      - main    
-      - develop 
+      - main                # Replace with your primary branch
+      - develop
+      - azure-pipelines
+      - azure-pipelines-v2
+      - pipeline
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -12,7 +15,29 @@ steps:
 - checkout: self
 
 - script: |
+    # Add GitHub remote
     git remote add github https://github.com/pablo-alpes/TourGuideP8.git
+    
+    # Fetch all branches from GitHub
     git fetch github
-    git push github $(Build.SourceBranchName)
+    
+    # Get a list of branches in GitHub
+    branches=$(git branch -r | grep 'github/' | sed 's/github\///')
+
+    echo "Branches found in GitHub: $branches"
+    
+    # Push changes from Azure DevOps to GitHub for each branch
+    for branch in $branches; do
+      echo "Processing branch $branch"
+      
+      # Check out each branch locally
+      if git show-ref --verify --quiet refs/heads/$branch; then
+        git checkout $branch
+      else
+        git checkout -b $branch origin/$branch
+      fi
+
+      # Push the branch to GitHub
+      git push github $branch
+    done
   displayName: 'Sync Azure DevOps Repo with GitHub'
