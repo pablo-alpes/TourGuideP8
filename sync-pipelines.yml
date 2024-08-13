@@ -12,7 +12,7 @@ steps:
 - checkout: self
 
 - script: |
-    git remote add github https://github.com/your-username/your-repo.git
+    git remote add github https://github.com/pablo-alpes/TourGuideP8.git
     git fetch github
     git push github $(Build.SourceBranchName)
   displayName: 'Sync Azure DevOps Repo with GitHub'
