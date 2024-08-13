@@ -1,6 +1,5 @@
 package com.openclassrooms.tourguide.service;
 
-import com.openclassrooms.tourguide.TourGuideModule;
 import com.openclassrooms.tourguide.helper.InternalTestHelper;
 import com.openclassrooms.tourguide.tracker.Tracker;
 import com.openclassrooms.tourguide.user.User;
@@ -11,6 +10,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -24,8 +24,6 @@ import gpsUtil.GpsUtil;
 import gpsUtil.location.Attraction;
 import gpsUtil.location.Location;
 import gpsUtil.location.VisitedLocation;
-
-import rewardCentral.RewardCentral;
 
 import tripPricer.Provider;
 import tripPricer.TripPricer;
@@ -116,7 +114,7 @@ public class TourGuideService {
     public VisitedLocation trackUserLocation(User user) throws Exception {
         VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
         user.addToVisitedLocations(visitedLocation);
-        rewardsService.calculateRewards(user);
+        rewardsService.calculateRewards(user).get();
         return visitedLocation;
     }
 
@@ -167,7 +165,7 @@ public class TourGuideService {
 
     // Original method (kept for backward compatibility)
     public Map<Attraction, Double> getNearByAttractions(VisitedLocation visitedLocation, List<Attraction> allAttractions, boolean flag) {
-        List<Double> distances = allAttractions.stream()
+        List<Double> distances = allAttractions.parallelStream()
                 .map(attraction -> rewardsService.getDistance(new Location(attraction.latitude, attraction.longitude), visitedLocation.location))
                 .toList();
 
@@ -178,7 +176,7 @@ public class TourGuideService {
         }
 
         return consolidated.entrySet()
-                .stream()
+                .parallelStream()
                 .sorted(Map.Entry.comparingByValue())
                 .limit(5)
                 .collect(Collectors.toMap(
@@ -188,27 +186,36 @@ public class TourGuideService {
                         LinkedHashMap::new));
     }
 
+    /**
+     * This method sents the whole information for the json including the new values required (
+     * @param visitedLocation
+     * @param allAttractions
+     * @param user
+     * @return Map with all the attractions, reward points, closest ones
+     */
     public Map<Attraction, UserExtraInfo> getNearByAttractions(VisitedLocation visitedLocation, List<Attraction> allAttractions, User user) throws NullPointerException {
-        List<Double> distances = allAttractions.stream()
+        List<Double> distances = allAttractions.parallelStream()
                 .map(attraction -> rewardsService.getDistance(new Location(attraction.latitude, attraction.longitude), visitedLocation.location))
                 .toList();
 
         Map<Attraction, UserExtraInfo> consolidated = new HashMap<>();
-        for (int i = 0; i < distances.size(); i++) {
-            double userLongitude = i < allAttractions.size() ? user.getLastVisitedLocation().location.latitude : null;
-            double userLatitude = i < allAttractions.size() ? user.getLastVisitedLocation().location.longitude : null;
-            int reward = rewardsService.getRewardPoints(allAttractions.get(i), user);
+        //for (int i = 0; i < distances.size(); i++) {
+            AtomicInteger counter = new AtomicInteger(0); //done for passing the right location - solutioon: https://gist.github.com/Makesh/a1defe6f1e2692aaa196
+            allAttractions.parallelStream().forEach(attraction -> { //refactored for performance optimization
+            double userLongitude = user.getLastVisitedLocation().location.latitude;
+            double userLatitude = user.getLastVisitedLocation().location.longitude;
+            int reward = rewardsService.getRewardPoints(attraction, user);
 
-            consolidated.put(allAttractions.get(i), new UserExtraInfo(
-                                distances.get(i),
+            consolidated.put(attraction, new UserExtraInfo(
+                                distances.get(counter.getAndIncrement()),
                     reward,
                     userLongitude,
                     userLatitude
             ));
-        }
+        });
 
         return consolidated.entrySet()
-                .stream()
+                .parallelStream()
                 .sorted(Map.Entry.comparingByValue(Comparator.comparingDouble(UserExtraInfo::getDistance)))
                 .limit(5)
                 .collect(Collectors.toMap(
@@ -236,7 +243,7 @@ public class TourGuideService {
 // internal users are provided and stored in memory
     private final Map<String, User> internalUserMap = new HashMap<>();
 
-    private void initializeInternalUsers() {
+    public void initializeInternalUsers() {
         IntStream.range(0, InternalTestHelper.getInternalUserNumber()).forEach(i -> {
             String userName = "internalUser" + i;
             String phone = "000";

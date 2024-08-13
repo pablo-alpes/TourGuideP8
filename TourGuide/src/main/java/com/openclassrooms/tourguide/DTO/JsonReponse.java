@@ -30,8 +30,7 @@ public class JsonReponse {
                 .setPrettyPrinting().create();
         String gsonString = gson.toJson(top5Attractions);
 
-        System.out.println(gsonString);
-        return null;
+        return gsonString;
     }
 
 

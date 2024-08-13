@@ -44,28 +44,38 @@ public class RewardsService {
 
     public CompletableFuture<?> calculateRewards(User user) {
         //the return type is changed to make it testable and given by return async
-        final List<VisitedLocation> userLocations = new ArrayList<VisitedLocation>(user.getVisitedLocations());
-        final List<Attraction> attractions = gpsUtil.getAttractions();
+        final List<VisitedLocation> userLocations = new CopyOnWriteArrayList<VisitedLocation>(user.getVisitedLocations());
+        final List<Attraction> attractions = new CopyOnWriteArrayList<>(gpsUtil.getAttractions());
 
         List<CompletableFuture<?>> futureList = new ArrayList<>();
         futureList.add(
                 CompletableFuture.runAsync(() -> { //we don't produce any result, so we take runAsync and not supplyAsync
                     //technical notes on runasyn and supply async: https://www.baeldung.com/java-completablefuture-runasync-supplyasync
-                    userLocations.forEach(visitedLocation -> {
-                        attractions.forEach(attraction -> {
-                            if (!(attraction.attractionName.equals(visitedLocation.location)) & nearAttraction(visitedLocation, attraction)) {
+                    userLocations.parallelStream().forEach(visitedLocation -> {
+                        attractions.parallelStream().forEach(attraction -> {
+                            if (nearAttraction(visitedLocation, attraction)) {
                                 user.addUserReward(new UserReward(visitedLocation, attraction, getRewardPoints(attraction, user)));
                             }
                         });
                     });
-                }, executor)); //we add this executor to change the default fork join to gain speed
+                },executor)); //we add this executor to change the default fork join to gain speed
         return CompletableFuture.allOf(futureList.toArray(CompletableFuture[]::new));
     }
 
-    public int getRewardPoints(Attraction attraction, User user) {
-        return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
-    }
+        // Method to get reward points for multiple attractions in parallel
+        public int getRewardPoints(Attraction attraction, User user) {
+            CompletableFuture<Integer> future = CompletableFuture.supplyAsync(() ->
+                    rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId())
+            , executor);
 
+            // Get the result of the CompletableFuture
+            try {
+                return future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+                return 0; // Handle errors as needed
+            }
+        }
 
     public boolean isWithinAttractionProximity(Attraction attraction, Location location) {
         return getDistance(attraction, location) > attractionProximityRange ? false : true;

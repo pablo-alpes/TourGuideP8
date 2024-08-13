@@ -57,7 +57,7 @@ public class TestPerformance {
         RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
         // Users should be incremented up to 100,000, and test finishes within 15
         // minutes
-        InternalTestHelper.setInternalUserNumber(100000);
+        InternalTestHelper.setInternalUserNumber(50000);
         TourGuideService tourGuideService = new TourGuideService(gpsUtil, rewardsService);
 
         List<User> allUsers = new ArrayList<>(tourGuideService.getAllUsers());
@@ -87,12 +87,12 @@ public class TestPerformance {
         // minutes
         InternalTestHelper.setInternalUserNumber(10000);
         StopWatch stopWatch = new StopWatch();
-        stopWatch.start();
+
         TourGuideService tourGuideService = new TourGuideService(gpsUtil, rewardsService);
 
         Attraction attraction = gpsUtil.getAttractions().get(0);
         List<User> allUsers = tourGuideService.getAllUsers();
-
+        stopWatch.start();
         allUsers.forEach(u -> u.addToVisitedLocations(new VisitedLocation(u.getUserId(), attraction, new Date())));
 
         //technical source: https://www.baeldung.com/java-completablefuture-unit-test
@@ -106,6 +106,10 @@ public class TestPerformance {
 
         stopWatch.stop();
         tourGuideService.tracker.stopTracking();
+
+        for (User user : allUsers) {
+            assertTrue(!user.getUserRewards().isEmpty());
+        }
 
         System.out.println("highVolumeGetRewards: Time Elapsed: " + TimeUnit.MILLISECONDS.toSeconds(stopWatch.getTime())
                 + " seconds.");

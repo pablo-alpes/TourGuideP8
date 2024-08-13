@@ -3,6 +3,7 @@ package com.openclassrooms.tourguide;
 import java.util.List;
 
 import com.openclassrooms.tourguide.DTO.JsonReponse;
+import com.openclassrooms.tourguide.service.RewardsService;
 import gpsUtil.GpsUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,16 +18,21 @@ import com.openclassrooms.tourguide.service.TourGuideService;
 import com.openclassrooms.tourguide.user.User;
 import com.openclassrooms.tourguide.user.UserReward;
 
+import rewardCentral.RewardCentral;
 import tripPricer.Provider;
 
 @RestController
 public class TourGuideController {
 
-	@Autowired
-	TourGuideService tourGuideService;
+    private final GpsUtil gpsUtil = new GpsUtil();
+
+    private final RewardCentral rewardsCentral = new RewardCentral();
 
     @Autowired
-    GpsUtil gpsUtil;
+    private RewardsService rewardsService;
+
+    @Autowired
+    private TourGuideService tourGuideService = new TourGuideService(gpsUtil, rewardsService);
 
     @Autowired
     JsonReponse jsonReponse;
@@ -52,8 +58,8 @@ public class TourGuideController {
         //    Note: Attraction reward points can be gathered from RewardsCentral
     @RequestMapping("/getNearbyAttractions") 
     public String getNearbyAttractions(@RequestParam String userName) throws Exception {
-    	VisitedLocation visitedLocation = tourGuideService.getUserLocation(getUser(userName));
         User user = tourGuideService.getUser(userName);
+        VisitedLocation visitedLocation = tourGuideService.getUserLocation(user);
         List<Attraction> allAttractions = gpsUtil.getAttractions();
         return jsonReponse.replyJson(tourGuideService.getNearByAttractions(visitedLocation, allAttractions, user));
     }
@@ -68,8 +74,8 @@ public class TourGuideController {
     	return tourGuideService.getTripDeals(getUser(userName));
     }
 
-    @GetMapping("/getUser")
-    private User getUser(String userName) {
+    @RequestMapping("/getUser")
+    private User getUser(@RequestParam String userName) {
     	return tourGuideService.getUser(userName);
     }
    
