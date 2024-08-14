@@ -25,6 +25,7 @@ import gpsUtil.location.Attraction;
 import gpsUtil.location.Location;
 import gpsUtil.location.VisitedLocation;
 
+import rewardCentral.RewardCentral;
 import tripPricer.Provider;
 import tripPricer.TripPricer;
 
@@ -37,6 +38,7 @@ public class TourGuideService {
     private final TripPricer tripPricer = new TripPricer();
     public final Tracker tracker;
     boolean testMode = true;
+    private final ExecutorService executorService = Executors.newFixedThreadPool(100);
 
     public TourGuideService(GpsUtil gpsUtil, RewardsService rewardsService) {
         this.gpsUtil = gpsUtil;
@@ -60,7 +62,7 @@ public class TourGuideService {
 
     public VisitedLocation getUserLocation(User user) throws Exception {
         VisitedLocation visitedLocation = (user.getVisitedLocations().size() > 0) ? user.getLastVisitedLocation()
-                : trackUserLocation(user);
+                : trackUserLocation(user).get();
         return visitedLocation;
     }
 
@@ -87,22 +89,22 @@ public class TourGuideService {
 
         while (true) {
             providers.addAll(
-                        tripPricer.getPrice(
-                                tripPricerApiKey,
-                                user.getUserId(),
-                                user.getUserPreferences().getNumberOfAdults(),
-                                user.getUserPreferences().getNumberOfChildren(),
-                                user.getUserPreferences().getTripDuration(),
-                                cumulativeRewardPoints));
+                    tripPricer.getPrice(
+                            tripPricerApiKey,
+                            user.getUserId(),
+                            user.getUserPreferences().getNumberOfAdults(),
+                            user.getUserPreferences().getNumberOfChildren(),
+                            user.getUserPreferences().getTripDuration(),
+                            cumulativeRewardPoints));
 
             providers = providers.stream()
-                       .filter(distinctByKey(provider -> provider.price)) //add to filter by elements of different price
-                       .collect(Collectors.toList());
+                    .filter(distinctByKey(provider -> provider.price)) //add to filter by elements of different price
+                    .collect(Collectors.toList());
 
             if (providers.size() > 9) break;
 
         }
-        return providers.subList(0,10); //gets the first 10, no order necesarily done
+        return providers.subList(0, 10); //gets the first 10, no order necesarily done
     }
 
     public static <T> Predicate<T> distinctByKey(Function<? super T, ?> keyExtractor) {
@@ -111,43 +113,18 @@ public class TourGuideService {
         return t -> seen.add(keyExtractor.apply(t));
     }
 
-    public VisitedLocation trackUserLocation(User user) throws Exception {
-        VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
-        user.addToVisitedLocations(visitedLocation);
-        rewardsService.calculateRewards(user).get();
-        return visitedLocation;
-    }
-
     //technical doc of different approaches :
     // from https://krishaniindrachapa.medium.com/parallel-processing-for-optimisation-in-java-8f68077d3605
-    public List<VisitedLocation> trackUserLocations(List<User> users) throws ExecutionException, InterruptedException {
-        List<CompletableFuture<VisitedLocation>> allFutures = new ArrayList<>();
-        ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()*10); // passing a specific executor to supply async to optimize performance
 
-        try {
-            users.stream().parallel().forEach(user -> {
-                CompletableFuture<VisitedLocation> future = CompletableFuture.supplyAsync(() -> {
-                    VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
-                    user.addToVisitedLocations(visitedLocation);
-                    try {
-                        rewardsService.calculateRewards(user);
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                    return visitedLocation;
-                }, executorService);
-                allFutures.add(future);
-            });
-
-            CompletableFuture<List<VisitedLocation>> listFuture = CompletableFuture.allOf(allFutures.toArray(new CompletableFuture[0]))
-                    .thenApply(v -> allFutures.stream().parallel()
-                            .map(CompletableFuture::join)
-                            .collect(Collectors.toList()));
-            return listFuture.join();
-        } finally {
-            executorService.shutdown();
-        }
+    public CompletableFuture<VisitedLocation> trackUserLocation(User user) {
+        return CompletableFuture.supplyAsync(() -> {
+            VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
+            user.addToVisitedLocations(visitedLocation);
+            rewardsService.calculateRewards(user);
+            return visitedLocation;
+        }, executorService);
     }
+
 
     /**
      * public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
@@ -188,6 +165,7 @@ public class TourGuideService {
 
     /**
      * This method sents the whole information for the json including the new values required (
+     *
      * @param visitedLocation
      * @param allAttractions
      * @param user
@@ -200,14 +178,14 @@ public class TourGuideService {
 
         Map<Attraction, UserExtraInfo> consolidated = new HashMap<>();
         //for (int i = 0; i < distances.size(); i++) {
-            AtomicInteger counter = new AtomicInteger(0); //done for passing the right location - solutioon: https://gist.github.com/Makesh/a1defe6f1e2692aaa196
-            allAttractions.parallelStream().forEach(attraction -> { //refactored for performance optimization
+        AtomicInteger counter = new AtomicInteger(0); //done for passing the right location - solutioon: https://gist.github.com/Makesh/a1defe6f1e2692aaa196
+        allAttractions.parallelStream().forEach(attraction -> { //refactored for performance optimization
             double userLongitude = user.getLastVisitedLocation().location.latitude;
             double userLatitude = user.getLastVisitedLocation().location.longitude;
             int reward = rewardsService.getRewardPoints(attraction, user);
 
             consolidated.put(attraction, new UserExtraInfo(
-                                distances.get(counter.getAndIncrement()),
+                    distances.get(counter.getAndIncrement()),
                     reward,
                     userLongitude,
                     userLatitude
@@ -256,12 +234,43 @@ public class TourGuideService {
         logger.debug("Created " + InternalTestHelper.getInternalUserNumber() + " internal test users.");
     }
 
+    /**private void generateUserLocationHistory(User user) {
+     IntStream.range(0, 3).forEach(i -> {
+     user.addToVisitedLocations(new VisitedLocation(user.getUserId(),
+     new Location(generateRandomLatitude(), generateRandomLongitude()), getRandomTime()));
+     });
+     }
+     */
+
+    /**
+     * Max number locations per user
+     * Method refined to assign real locations and not randomwise
+     *
+     * @param user
+     */
     private void generateUserLocationHistory(User user) {
         IntStream.range(0, 3).forEach(i -> {
+            //    try {
+            //        user.addToVisitedLocations(new VisitedLocation(user.getUserId(),
+            //               new Location(generateAttractionLocation().latitude,generateAttractionLocation().longitude), getRandomTime()));
+            //                   } catch (Exception e) {
             user.addToVisitedLocations(new VisitedLocation(user.getUserId(),
                     new Location(generateRandomLatitude(), generateRandomLongitude()), getRandomTime()));
+            //    }
         });
     }
+
+    //private Attraction generateAttractionLocation() {
+    //  Random rand = new Random();
+    //  List<Attraction> allAttractions = new CopyOnWriteArrayList<>(gpsUtil.getAttractions());
+    //  int attractionRand = rand.nextInt(0, allAttractions.size());
+    //  return allAttractions.get(attractionRand);
+
+
+    //user.addToVisitedLocations(new VisitedLocation(user.getUserId(), attraction, new Date()));
+    // TourGuideService tourGuideService = new TourGuideService(gpsUtil, rewardsService);
+    // tourGuideService.trackUserLocation(user);
+    //}
 
     private double generateRandomLongitude() {
         double leftLimit = -180;

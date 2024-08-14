@@ -2,8 +2,9 @@ package com.openclassrooms.tourguide.service;
 
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
 import gpsUtil.GpsUtil;
@@ -20,13 +21,14 @@ public class RewardsService {
 
     private static final double STATUTE_MILES_PER_NAUTICAL_MILE = 1.15077945;
 
+
     // proximity in miles
     private int defaultProximityBuffer = 10;
     private int proximityBuffer = defaultProximityBuffer;
     private int attractionProximityRange = 200;
     private final GpsUtil gpsUtil;
     private final RewardCentral rewardsCentral;
-    private ExecutorService executor = Executors.newFixedThreadPool(1000);
+    private final Executor executor = Executors.newScheduledThreadPool(100);
     //https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Executors.html#newFixedThreadPool-int-
 
     public RewardsService(GpsUtil gpsUtil, RewardCentral rewardCentral) {
@@ -42,40 +44,36 @@ public class RewardsService {
         proximityBuffer = defaultProximityBuffer;
     }
 
-    public CompletableFuture<?> calculateRewards(User user) {
-        //the return type is changed to make it testable and given by return async
-        final List<VisitedLocation> userLocations = new CopyOnWriteArrayList<VisitedLocation>(user.getVisitedLocations());
-        final List<Attraction> attractions = new CopyOnWriteArrayList<>(gpsUtil.getAttractions());
+    public CompletableFuture<Void> calculateRewards(User user) {
+        final List<VisitedLocation> userLocations = new ArrayList<>(user.getVisitedLocations());
 
-        List<CompletableFuture<?>> futureList = new ArrayList<>();
-        futureList.add(
-                CompletableFuture.runAsync(() -> { //we don't produce any result, so we take runAsync and not supplyAsync
-                    //technical notes on runasyn and supply async: https://www.baeldung.com/java-completablefuture-runasync-supplyasync
-                    userLocations.parallelStream().forEach(visitedLocation -> {
-                        attractions.parallelStream().forEach(attraction -> {
-                            if (nearAttraction(visitedLocation, attraction)) {
-                                user.addUserReward(new UserReward(visitedLocation, attraction, getRewardPoints(attraction, user)));
-                            }
-                        });
-                    });
-                },executor)); //we add this executor to change the default fork join to gain speed
-        return CompletableFuture.allOf(futureList.toArray(CompletableFuture[]::new));
+        // Fetch attractions asynchronously since gpsutil is a bottelneck
+        CompletableFuture<List<Attraction>> attractionsFuture = CompletableFuture.supplyAsync(
+                () -> gpsUtil.getAttractions(), Executors.newVirtualThreadPerTaskExecutor()); //virtuals to enhance performance for i/o transactions
+
+        // Composing with rewards once attractions are fetched
+        return attractionsFuture.thenCompose(attractions -> {
+            List<CompletableFuture<Void>> futures = new ArrayList<>();
+            for (VisitedLocation visitedLocation : userLocations) { //we keep loops as there's loss of performance with parallel streams in the thread management
+                for (Attraction attraction : attractions) {
+                    if (nearAttraction(visitedLocation, attraction)) {
+                        // Submit each reward calculation as a separate task in a virtual thread
+                        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                            int rewardPoints = getRewardPoints(attraction, user);
+                            user.addUserReward(new UserReward(visitedLocation, attraction, rewardPoints));
+                        }, Executors.newVirtualThreadPerTaskExecutor());
+                        futures.add(future);
+                    }
+                }
+            }
+            // We wait for all futures to be done and merging in it into a CompletableFuture
+            return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+        });
     }
 
-        // Method to get reward points for multiple attractions in parallel
-        public int getRewardPoints(Attraction attraction, User user) {
-            CompletableFuture<Integer> future = CompletableFuture.supplyAsync(() ->
-                    rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId())
-            , executor);
-
-            // Get the result of the CompletableFuture
-            try {
-                return future.get();
-            } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-                return 0; // Handle errors as needed
-            }
-        }
+    public int getRewardPoints(Attraction attraction, User user) {
+        return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
+    }
 
     public boolean isWithinAttractionProximity(Attraction attraction, Location location) {
         return getDistance(attraction, location) > attractionProximityRange ? false : true;

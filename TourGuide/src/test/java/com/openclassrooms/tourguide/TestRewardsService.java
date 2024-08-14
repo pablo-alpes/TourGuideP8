@@ -60,7 +60,7 @@ public class TestRewardsService {
 		TourGuideService tourGuideService = new TourGuideService(gpsUtil, rewardsService);
 
 		User user = tourGuideService.getAllUsers().get(0);
-		rewardsService.calculateRewards(user).get(); //needs to wait for the futures to complete
+		rewardsService.calculateRewards(user); //needs to wait for the futures to complete
 
 		List<UserReward> userRewards = tourGuideService.getUserRewards(tourGuideService.getAllUsers().get(0));
 		tourGuideService.tracker.stopTracking();

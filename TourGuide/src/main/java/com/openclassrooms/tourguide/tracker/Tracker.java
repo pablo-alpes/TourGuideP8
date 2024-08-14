@@ -49,8 +49,6 @@ public class Tracker extends Thread {
 			users.forEach(u -> {
                 try {
                     tourGuideService.trackUserLocation(u);
-                } catch (ExecutionException | InterruptedException e) {
-                    throw new RuntimeException(e);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
