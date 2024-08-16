@@ -1,4 +1,4 @@
-FROM openjdk:17-jdk-alpine
+FROM openjdk:22-jdk-slim
 
 #Working dir for the container
 WORKDIR /app
