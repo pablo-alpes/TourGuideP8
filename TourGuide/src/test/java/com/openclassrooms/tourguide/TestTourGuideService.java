@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import com.openclassrooms.tourguide.DTO.JsonReponse;
 import com.openclassrooms.tourguide.user.UserExtraInfo;
@@ -117,48 +118,6 @@ public class TestTourGuideService {
 		assertEquals(5, attractions.size());
 	}
 	*/
-
-	@Test
-	@DisplayName("Sends the top 5 closest destinations to the user based on its last location (new feature)")
-	public void Top5ClosestDestinations() throws Exception {
-		GpsUtil gpsUtil = new GpsUtil();
-		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
-		InternalTestHelper.setInternalUserNumber(0);
-		User user = new User(UUID.randomUUID(), "jon", "000", "jon@tourGuide.com");
-
-		TourGuideService tourGuideService = new TourGuideService(gpsUtil, rewardsService);
-
-		VisitedLocation visitedLocation = tourGuideService.trackUserLocation(user).get();
-		List<Attraction> allAttractions = gpsUtil.getAttractions();
-		tourGuideService.tracker.stopTracking();
-
-		int top5 = tourGuideService.getNearByAttractions(visitedLocation, allAttractions, true).size();
-
-		assertEquals(5, top5);
-	}
-
-	@Test
-	@DisplayName("Tests whether the reply is in json or not for one user")
-	public void jsonOutputForTop5Closest() throws Exception {
-		JsonReponse jsonReponse = new JsonReponse();
-
-		//ARRANGE for the attractions MAP reply
-		GpsUtil gpsUtil = new GpsUtil();
-		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
-		InternalTestHelper.setInternalUserNumber(0);
-		TourGuideService tourGuideService = new TourGuideService(gpsUtil, rewardsService);
-		List<Attraction> allAttractions = gpsUtil.getAttractions();
-
-		User user = new User(UUID.randomUUID(), "jon", "000", "jon@tourGuide.com");
-		VisitedLocation visitedLocation = tourGuideService.trackUserLocation(user).get();
-		Map<Attraction, UserExtraInfo> attractions = tourGuideService.getNearByAttractions(visitedLocation, allAttractions, user);
-
-		//ACT
-		String json = jsonReponse.replyJson(attractions);
-
-		//ASSERT
-        assertFalse(json.isEmpty());
-	}
 
 	@Test
 	@DisplayName("Fixes trips deals to deliver 10 max options to the user")

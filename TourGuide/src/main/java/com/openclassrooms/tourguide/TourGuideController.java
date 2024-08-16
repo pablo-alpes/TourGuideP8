@@ -43,7 +43,7 @@ public class TourGuideController {
 
     @RequestMapping("/getLocation") 
     public VisitedLocation getLocation(@RequestParam String userName) throws Exception {
-    	return tourGuideService.getUserLocation(getUser(userName));
+    	return (VisitedLocation) tourGuideService.getUserLocation(getUser(userName));
     }
     
     //  DONE: Change this method to no longer return a List of Attractions.

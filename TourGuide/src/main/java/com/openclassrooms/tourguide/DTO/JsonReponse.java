@@ -19,7 +19,7 @@ public class JsonReponse {
     // Tourist attractions lat/long, OK
     // The user's location lat/long, OK
     // The distance in miles between the user's location and each of the attractions. OK
-    // The reward points for visiting each Attraction. OK but throws 0 all the time
+    // The reward points for visiting each Attraction. OK
     //    Note: Attraction reward points can be gathered from RewardsCentral
 
 

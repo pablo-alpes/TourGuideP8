@@ -2,9 +2,7 @@ package com.openclassrooms.tourguide.service;
 
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
-import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Service;
 
 import gpsUtil.GpsUtil;
@@ -14,6 +12,8 @@ import gpsUtil.location.VisitedLocation;
 import rewardCentral.RewardCentral;
 import com.openclassrooms.tourguide.user.User;
 import com.openclassrooms.tourguide.user.UserReward;
+
+import static java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor;
 
 @Service
 public class RewardsService {
@@ -28,8 +28,9 @@ public class RewardsService {
     private int attractionProximityRange = 200;
     private final GpsUtil gpsUtil;
     private final RewardCentral rewardsCentral;
-    private final Executor executor = Executors.newScheduledThreadPool(100);
-    //https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Executors.html#newFixedThreadPool-int-
+    private final ExecutorService virtualPool = newVirtualThreadPerTaskExecutor();
+    //https://openjdk.org/jeps/444: Virtual threads are lightweight threads that dramatically
+    // reduce the effort of writing, maintaining, and observing high-throughput concurrent applications.
 
     public RewardsService(GpsUtil gpsUtil, RewardCentral rewardCentral) {
         this.gpsUtil = gpsUtil;
@@ -44,43 +45,89 @@ public class RewardsService {
         proximityBuffer = defaultProximityBuffer;
     }
 
+    /**
+     * Perfoms the calculation of rewards based on business logic (locations to be rewarded shall be attractions) and not repeated
+     * It uses virtual threads to enhance performance and it does that by combining steps since not all steps can be asynchrous for
+     * the process
+     * We kept the prints for debugging
+     * @param user
+     * @return
+     */
     public CompletableFuture<Void> calculateRewards(User user) {
+        //System.out.println("Starting reward calculation");
         final List<VisitedLocation> userLocations = new ArrayList<>(user.getVisitedLocations());
 
-        // Fetch attractions asynchronously since gpsutil is a bottelneck
-        CompletableFuture<List<Attraction>> attractionsFuture = CompletableFuture.supplyAsync(
-                () -> gpsUtil.getAttractions(), Executors.newVirtualThreadPerTaskExecutor()); //virtuals to enhance performance for i/o transactions
+        CompletableFuture<List<Attraction>> attractionsFuture = CompletableFuture.supplyAsync(gpsUtil::getAttractions, virtualPool);
+        CompletableFuture<VisitedLocation> locationFuture = CompletableFuture.supplyAsync(() -> gpsUtil.getUserLocation(user.getUserId()), virtualPool);
 
-        // Composing with rewards once attractions are fetched
-        return attractionsFuture.thenCompose(attractions -> {
+        return attractionsFuture.thenCombine(locationFuture, (attractions, location) -> {
+            //System.out.println("Processing attractions and location");
+
             List<CompletableFuture<Void>> futures = new ArrayList<>();
-            for (VisitedLocation visitedLocation : userLocations) { //we keep loops as there's loss of performance with parallel streams in the thread management
+            for (VisitedLocation visitedLocation : userLocations) {
                 for (Attraction attraction : attractions) {
-                    if (nearAttraction(visitedLocation, attraction)) {
-                        // Submit each reward calculation as a separate task in a virtual thread
-                        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-                            int rewardPoints = getRewardPoints(attraction, user);
-                            user.addUserReward(new UserReward(visitedLocation, attraction, rewardPoints));
-                        }, Executors.newVirtualThreadPerTaskExecutor());
-                        futures.add(future);
-                    }
+
+                    //System.out.println("Processing attraction: " + attraction);
+
+                    CompletableFuture<Void> future = getRewardPointsAsync(attraction, user).thenAccept(rewardPoints -> {
+                        try {
+                            if (isLocationMatch(visitedLocation, attraction)) { // Business rule: checks if visited location is an attraction
+                                //TODO -- Do we need also to add back the nearlocation??
+                            //System.out.println("Calculating reward for: " + attraction);
+                            //System.out.println("rewardPoints: " + rewardPoints);
+                            UserReward userReward = new UserReward(visitedLocation, attraction, rewardPoints);
+                            user.addUserReward(userReward);
+                            }
+                        } catch (Exception e) {
+                            //System.err.println("Error adding user reward: " + e.getMessage());
+                            e.printStackTrace();
+                        }
+                    });
+
+                    futures.add(future);
                 }
             }
-            // We wait for all futures to be done and merging in it into a CompletableFuture
-            return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+            return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        }).thenRun(() -> {
+            //System.out.println("Completed reward calculation.");
         });
+    }
+
+    //TODO-- Do we need to apply this to the calculate reward or not?
+    private boolean nearAttraction(VisitedLocation visitedLocation, Attraction attraction) {
+        return getDistance(attraction, visitedLocation.location) > proximityBuffer ? false : true;
+    }
+
+    private boolean isLocationMatch(VisitedLocation visitedLocation, Attraction attraction) {
+        double tolerance = 0.0001;
+        // Define a small tolerance floating-point precision issues
+
+        boolean latMatch = Math.abs((visitedLocation.location.latitude - attraction.latitude)) < tolerance;
+        boolean lonMatch = Math.abs(visitedLocation.location.longitude - attraction.longitude) < tolerance;
+
+        return latMatch && lonMatch;
     }
 
     public int getRewardPoints(Attraction attraction, User user) {
         return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
     }
 
-    public boolean isWithinAttractionProximity(Attraction attraction, Location location) {
-        return getDistance(attraction, location) > attractionProximityRange ? false : true;
+    //for use in the calculate rewards
+    public CompletableFuture<Integer> getRewardPointsAsync(Attraction attraction, User user) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
+            } catch (Exception e) {
+                System.err.println("Error fetching reward points: " + e.getMessage());
+                e.printStackTrace();
+                return 0;
+            }
+        }, virtualPool);
     }
 
-    private boolean nearAttraction(VisitedLocation visitedLocation, Attraction attraction) {
-        return getDistance(attraction, visitedLocation.location) > proximityBuffer ? false : true;
+    //deprecated
+    public boolean isWithinAttractionProximity(Attraction attraction, Location location) {
+        return getDistance(attraction, location) > attractionProximityRange ? false : true;
     }
 
     public double getDistance(Location loc1, Location loc2) {

@@ -25,7 +25,6 @@ import gpsUtil.location.Attraction;
 import gpsUtil.location.Location;
 import gpsUtil.location.VisitedLocation;
 
-import rewardCentral.RewardCentral;
 import tripPricer.Provider;
 import tripPricer.TripPricer;
 
@@ -60,10 +59,10 @@ public class TourGuideService {
         return user.getUserRewards();
     }
 
-    public VisitedLocation getUserLocation(User user) throws Exception {
-        VisitedLocation visitedLocation = (user.getVisitedLocations().size() > 0) ? user.getLastVisitedLocation()
-                : trackUserLocation(user).get();
-        return visitedLocation;
+    public VisitedLocation getUserLocation(User user) {
+        Object visitedLocation = (user.getVisitedLocations().size() > 0) ? user.getLastVisitedLocation()
+                :  trackUserLocation(user);
+        return (VisitedLocation) visitedLocation;
     }
 
     public User getUser(String userName) {
@@ -113,17 +112,29 @@ public class TourGuideService {
         return t -> seen.add(keyExtractor.apply(t));
     }
 
-    //technical doc of different approaches :
-    // from https://krishaniindrachapa.medium.com/parallel-processing-for-optimisation-in-java-8f68077d3605
+    /**
+     * It gathers the user location. It applies then compose and then apply to ensure it awaits for results of calcualte rewards
+     * @param user
+     * @return visited location
+     * //technical doc of different approaches :
+     * from https://krishaniindrachapa.medium.com/parallel-processing-for-optimisation-in-java-8f68077d3605
+     */
 
     public CompletableFuture<VisitedLocation> trackUserLocation(User user) {
+        //System.out.println("Tracking user location for user: " + user.getUserId());
         return CompletableFuture.supplyAsync(() -> {
             VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
             user.addToVisitedLocations(visitedLocation);
-            rewardsService.calculateRewards(user);
             return visitedLocation;
-        }, executorService);
+        }, executorService).thenCompose(visitedLocation -> {
+          //  System.out.println("Calculating rewards after tracking location.");
+            return rewardsService.calculateRewards(user).thenApply(v -> {
+               // System.out.println("Completed reward calculation.");
+                return visitedLocation;
+            });
+        });
     }
+
 
 
     /**
@@ -178,7 +189,7 @@ public class TourGuideService {
 
         Map<Attraction, UserExtraInfo> consolidated = new HashMap<>();
         //for (int i = 0; i < distances.size(); i++) {
-        AtomicInteger counter = new AtomicInteger(0); //done for passing the right location - solutioon: https://gist.github.com/Makesh/a1defe6f1e2692aaa196
+        AtomicInteger counter = new AtomicInteger(0); //done for passing the right location - solution: https://gist.github.com/Makesh/a1defe6f1e2692aaa196
         allAttractions.parallelStream().forEach(attraction -> { //refactored for performance optimization
             double userLongitude = user.getLastVisitedLocation().location.latitude;
             double userLatitude = user.getLastVisitedLocation().location.longitude;
@@ -260,6 +271,8 @@ public class TourGuideService {
         });
     }
 
+    //This code is in case to generale real attraction instead of random
+    //However performance is hugely impacted
     //private Attraction generateAttractionLocation() {
     //  Random rand = new Random();
     //  List<Attraction> allAttractions = new CopyOnWriteArrayList<>(gpsUtil.getAttractions());

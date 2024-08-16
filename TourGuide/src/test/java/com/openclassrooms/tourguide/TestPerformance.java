@@ -62,7 +62,7 @@ public class TestPerformance {
         StopWatch stopWatch = new StopWatch();
         stopWatch.start();
 
-        List<? extends CompletableFuture<?>> futureRewards = allUsers.stream()
+        List<CompletableFuture<VisitedLocation>> futureRewards = allUsers.stream()
                 .map(tourGuideService::trackUserLocation)
                 .toList();
 
@@ -84,13 +84,13 @@ public class TestPerformance {
     }
 
     @Test
-    public void highVolumeGetRewards() {
+    public void highVolumeGetRewards() throws InterruptedException {
         GpsUtil gpsUtil = new GpsUtil();
         RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
 
         // Users should be incremented up to 100,000, and test finishes within 20
         // minutes
-        InternalTestHelper.setInternalUserNumber(100);
+        InternalTestHelper.setInternalUserNumber(100000);
         StopWatch stopWatch = new StopWatch();
 
         TourGuideService tourGuideService = new TourGuideService(gpsUtil, rewardsService);
@@ -107,6 +107,7 @@ public class TestPerformance {
                 .map(rewardsService::calculateRewards)
                 .toArray(CompletableFuture[]::new);
         CompletableFuture.allOf(completableFutures).join();
+
 
         for (User user : allUsers) {
             assertTrue(!user.getUserRewards().isEmpty());
