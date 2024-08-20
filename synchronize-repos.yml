@@ -19,12 +19,23 @@ steps:
     git remote add azure https://$(AZURE_DEVOPS_TOK)@dev.azure.com/pablo-miranda0404/_git/TourGuideP8
 
     echo "Fetching latest changes from GitHub"
-    git fetch --unshallow github
-    git fetch --unshallow azure
+    git fetch github
+    git fetch azure
 
-    echo "Checking out branch $(Build.SourceBranchName)"
-    git checkout $(Build.SourceBranchName)
+    echo "Synchronizing branches from GitHub to Azure DevOps"
 
-    echo "Pushing changes to Azure DevOps"
-    git push azure $(Build.SourceBranchName):refs/heads/$(Build.SourceBranchName) --force
-  displayName: 'Sync GitHub branch with Azure DevOps'
+    # Iterate over all branches in GitHub and push to Azure DevOps
+    for branch in $(git branch -r | grep 'github/' | sed 's/github\///'); do
+      echo "Processing branch $branch"
+      git checkout $branch || git checkout -b $branch github/$branch
+      git push azure $branch:refs/heads/$branch --force
+    done
+
+    echo "Synchronizing tags from GitHub to Azure DevOps"
+
+    # Iterate over all tags in GitHub and push to Azure DevOps
+    for tag in $(git tag -l); do
+      echo "Processing tag $tag"
+      git push azure $tag --force
+    done
+  displayName: 'Overwrite Azure DevOps repository with GitHub content'
