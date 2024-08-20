@@ -18,7 +18,7 @@ steps:
     git remote add azure https://$(AZURE_DEVOPS_TOK)@dev.azure.com/pablo-miranda0404/_git/TourGuideP8
 
     echo "Fetching latest changes from GitHub"
-    git fetch github
+    git fetch github --unshallow
 
     echo "Checking out branch $(Build.SourceBranchName)"
     git checkout $(Build.SourceBranchName)
