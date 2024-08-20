@@ -20,6 +20,7 @@ steps:
 
     echo "Fetching latest changes from GitHub"
     git fetch github --unshallow
+    git fetch azure
 
     echo "Checking out branch $(Build.SourceBranchName)"
     git checkout $(Build.SourceBranchName)
