@@ -14,16 +14,16 @@ steps:
 
 - script: |
     echo "Setting up remotes"
-    git remote remove azure 
+    git remote remove azure
     git remote add github https://github.com/pablo-alpes/TourGuideP8.git
     git remote add azure https://$(AZURE_DEVOPS_TOK)@dev.azure.com/pablo-miranda0404/_git/TourGuideP8
 
     echo "Fetching latest changes from GitHub"
-    git fetch github --all
-    git fetch azure --all
+    git fetch --unshallow github
+    git fetch --unshallow azure
 
     echo "Checking out branch $(Build.SourceBranchName)"
-    git checkout -b $(Build.SourceBranchName)
+    git checkout $(Build.SourceBranchName)
 
     echo "Pushing changes to Azure DevOps"
     git push azure $(Build.SourceBranchName):refs/heads/$(Build.SourceBranchName) --force
