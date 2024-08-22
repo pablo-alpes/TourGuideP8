@@ -52,28 +52,27 @@
 			<groupId>gpsUtil</groupId>
 			<artifactId>gpsUtil</artifactId>
 			<version>1.0.0</version>
-			<scope>system</scope>
-			<systemPath>${project.basedir}/libs/gpsUtil.jar</systemPath>
-		</dependency>
+			<!--<scope>compile</scope>-->
+			<!--<systemPath>${project.basedir}/libs/gpsUtil.jar</systemPath> -->
+    </dependency>
 
-		<dependency>
-			<groupId>tripPricer</groupId>
-			<artifactId>tripPricer</artifactId>
-			<version>1.0.0</version>
+    <dependency>
+        <groupId>tripPricer</groupId>
+        <artifactId>tripPricer</artifactId>
+        <version>1.0.0</version>
+        <scope>compile</scope>
+		<!--<systemPath>${project.basedir}/libs/TripPricer.jar</systemPath> -->
+    </dependency>
 
-			<scope>system</scope>
-			<systemPath>${project.basedir}/libs/TripPricer.jar</systemPath>
-		</dependency>
+    <dependency>
+        <groupId>rewardCentral</groupId>
+        <artifactId>rewardCentral</artifactId>
+        <version>1.0.0</version>
+        <scope>compile</scope>
+		<!--<systemPath>${project.basedir}/libs/RewardCentral.jar</systemPath> -->
+    </dependency>
 
-		<dependency>
-			<groupId>rewardCentral</groupId>
-			<artifactId>rewardCentral</artifactId>
-			<version>1.0.0</version>
-			<scope>system</scope>
-			<systemPath>${project.basedir}/libs/RewardCentral.jar</systemPath>
-		</dependency>
-
-		<!-- gson to send the json reply of the api -->
+    <!-- gson to send the json reply of the api -->
 		<dependency>
 			<groupId>com.google.code.gson</groupId>
 			<artifactId>gson</artifactId>
@@ -92,13 +91,6 @@
 			<artifactId>json</artifactId>
 			<version>20240303</version>
 		</dependency>
-		<!-- https://mvnrepository.com/artifact/com.github.ben-manes.caffeine/caffeine -->
-		<dependency>
-			<groupId>com.github.ben-manes.caffeine</groupId>
-			<artifactId>caffeine</artifactId>
-			<version>3.1.8</version>
-		</dependency>
-
 
 	</dependencies>
 
