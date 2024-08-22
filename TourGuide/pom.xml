@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.openclassrooms</groupId>
 	<artifactId>tourguide</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.1-snapshot</version>
 	<name>tourguide</name>
 	<description>Demo project for Spring Boot</description>
 	<properties>
@@ -53,26 +53,24 @@
 			<artifactId>gpsUtil</artifactId>
 			<version>1.0.0</version>
 			<!--<scope>compile</scope>-->
-			<!--<systemPath>${project.basedir}/libs/gpsUtil.jar</systemPath> -->
-    </dependency>
+		<!--<systemPath>${project.basedir}/libs/gpsUtil.jar</systemPath>-->
+		</dependency>
 
-    <dependency>
-        <groupId>tripPricer</groupId>
-        <artifactId>tripPricer</artifactId>
-        <version>1.0.0</version>
-        <scope>compile</scope>
-		<!--<systemPath>${project.basedir}/libs/TripPricer.jar</systemPath> -->
-    </dependency>
+		<dependency>
+			<groupId>tripPricer</groupId>
+			<artifactId>tripPricer</artifactId>
+			<version>1.0.0</version>
+			<!--<systemPath>${project.basedir}/libs/TripPricer.jar</systemPath>-->
+		</dependency>
 
-    <dependency>
-        <groupId>rewardCentral</groupId>
-        <artifactId>rewardCentral</artifactId>
-        <version>1.0.0</version>
-        <scope>compile</scope>
-		<!--<systemPath>${project.basedir}/libs/RewardCentral.jar</systemPath> -->
-    </dependency>
+		<dependency>
+			<groupId>rewardCentral</groupId>
+			<artifactId>rewardCentral</artifactId>
+			<version>1.0.0</version>
+			<!--<systemPath>${project.basedir}/libs/RewardCentral.jar</systemPath>-->
+		</dependency>
 
-    <!-- gson to send the json reply of the api -->
+		<!-- gson to send the json reply of the api -->
 		<dependency>
 			<groupId>com.google.code.gson</groupId>
 			<artifactId>gson</artifactId>

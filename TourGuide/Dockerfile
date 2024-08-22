@@ -11,4 +11,4 @@ COPY libs/ /app/libs/
 EXPOSE 8080 8081 8082 8083
 
 #Command to run the application/ to be overriden by the docker compose
-ENTRYPOINT ["java", "-jar", "tourguide-0.0.1-SNAPSHOT.jar"]
+ENTRYPOINT ["java", "-jar", "/app/tourguide-0.0.1-SNAPSHOT.jar"]
