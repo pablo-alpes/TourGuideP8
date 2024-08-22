@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  tourguide:
+    build:
+      context: .
+    ports:
+      - "8080:8080"
+    command: ["java", "-jar", "tourguide-0.0.1-snapshot.jar"]
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+    depends_on:
+      - gps
+      - rewards
+      - pricer
+
+  gps:
+    build:
+      context: .
+    ports:
+      - "8081:8081"
+    command: ["java", "-jar", "libs/gpsUtil.jar"]
+
+  rewards:
+    build:
+      context: .
+    ports:
+      - "8082:8082"
+    command: ["java", "-jar", "libs/RewardCentral.jar"]
+
+  pricer:
+    build:
+      context: .
+    ports:
+      - "8083:8083"
+    command: ["java", "-jar", "libs/TripPricer.jar"]
