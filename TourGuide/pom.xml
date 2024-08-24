@@ -97,6 +97,14 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<image>
+						<name>project8tourguide.azurecr.io/${project.artifactId}</name>
+					</image>
+					<layers>true
+					<includeLayerTools>true</includeLayerTools>
+					</layers>
+				</configuration>
 			</plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
