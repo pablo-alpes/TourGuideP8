@@ -4,7 +4,7 @@ FROM openjdk:22-jdk-slim
 WORKDIR /app
 
 #Copies JAR file from the machine to the container
-COPY target/tourguide-0.0.1-snapshot.jar /app/tourguide.jar
+COPY target/tourguide-0.0.1-snapshot.jar /app/tourguide-0.0.1-snapshot.jar
 COPY libs/ /app/libs/
 
 
