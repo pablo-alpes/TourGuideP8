@@ -1,0 +1,41 @@
+# Syncronization of repositories with Github
+trigger:
+  branches:
+    include:
+      - main
+      - dev
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+- checkout: self
+  persistCredentials: true
+
+- script: |
+    echo "Setting up remotes"
+    git remote remove azure
+    git remote add github https://github.com/pablo-alpes/TourGuideP8.git
+    git remote add azure https://$(AZURE_DEVOPS_TOK)@dev.azure.com/pablo-miranda0404/_git/TourGuideP8
+
+    echo "Fetching latest changes from GitHub"
+    git fetch github
+    git fetch azure
+
+    echo "Synchronizing branches from GitHub to Azure DevOps"
+
+    # Iterate over all branches in GitHub and push to Azure DevOps
+    for branch in $(git branch -r | grep 'github/' | sed 's/github\///'); do
+      echo "Processing branch $branch"
+      git checkout $branch || git checkout -b $branch github/$branch
+      git push azure $branch:refs/heads/$branch --force
+    done
+
+    echo "Synchronizing tags from GitHub to Azure DevOps"
+
+    # Iterate over all tags in GitHub and push to Azure DevOps
+    for tag in $(git tag -l); do
+      echo "Processing tag $tag"
+      git push azure $tag --force
+    done
+  displayName: 'Overwrite Azure DevOps repository with GitHub content'
