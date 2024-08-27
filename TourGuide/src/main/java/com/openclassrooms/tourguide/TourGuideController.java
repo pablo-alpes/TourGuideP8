@@ -1,6 +1,10 @@
 package com.openclassrooms.tourguide;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.openclassrooms.tourguide.DTO.JsonReponse;
 import com.openclassrooms.tourguide.service.RewardsService;
@@ -59,7 +63,10 @@ public class TourGuideController {
     public String getNearbyAttractions(@RequestParam String userName) throws Exception {
         User user = tourGuideService.getUser(userName);
         VisitedLocation visitedLocation = tourGuideService.getUserLocation(user);
-        List<Attraction> allAttractions = gpsUtil.getAttractions();
+
+        //Optimization of the call to GpsUtil
+        List<Attractions> allAttractions = tourGuideService.getAllAttractions();
+
         return jsonReponse.replyJson(tourGuideService.getNearByAttractions(visitedLocation, allAttractions, user));
     }
 
