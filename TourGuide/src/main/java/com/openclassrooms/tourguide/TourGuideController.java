@@ -65,7 +65,7 @@ public class TourGuideController {
         VisitedLocation visitedLocation = tourGuideService.getUserLocation(user);
 
         //Optimization of the call to GpsUtil
-        List<Attractions> allAttractions = tourGuideService.getAllAttractions();
+        List<Attraction> allAttractions = tourGuideService.getAllAttractions();
 
         return jsonReponse.replyJson(tourGuideService.getNearByAttractions(visitedLocation, allAttractions, user));
     }

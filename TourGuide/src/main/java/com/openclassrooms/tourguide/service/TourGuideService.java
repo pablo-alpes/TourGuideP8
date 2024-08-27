@@ -302,9 +302,9 @@ public class TourGuideService {
         return Date.from(localDateTime.toInstant(ZoneOffset.UTC));
     }
 
-    public List<Attractions> getAllAttractions() {
+    public List<Attraction> getAllAttractions() {
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        CompletableFuture<List<Attractions>> attractionsList = CompletableFuture.supplyAsync(() -> gpsUtil.getAttractions(), executor);
+        CompletableFuture<List<Attraction>> attractionsList = CompletableFuture.supplyAsync(() -> gpsUtil.getAttractions(), executor);
         return attractionsList.join();
     }
 }
