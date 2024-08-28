@@ -12,8 +12,8 @@ import java.util.*;
 
 @Service
 public class JsonReponse {
-    public JsonReponse() {
-    }
+    static final Gson gson = new GsonBuilder().enableComplexMapKeySerialization().setPrettyPrinting()
+            .create();
     //  Return a new JSON object that contains: -- All data is contained, needs to wrap into a JSON now
     // Name of Tourist attraction, OK
     // Tourist attractions lat/long, OK
@@ -24,13 +24,9 @@ public class JsonReponse {
 
 
     public String replyJson(Map<Attraction, UserExtraInfo> top5Attractions) throws IOException {
-
         // Unboxing objects of the keys Technical :: https://stackoverflow.com/questions/8360836/gson-is-there-an-easier-way-to-serialize-a-map
-        Gson gson = new GsonBuilder().enableComplexMapKeySerialization()
-                .setPrettyPrinting().create();
-        String gsonString = gson.toJson(top5Attractions);
-
-        return gsonString;
+        return gson.toJson(top5Attractions);
+        //return top5Attractions.parallelStream().map(gson::toJson).toList();
     }
 
 

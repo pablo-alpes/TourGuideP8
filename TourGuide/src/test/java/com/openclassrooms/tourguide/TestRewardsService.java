@@ -104,7 +104,7 @@ public class TestRewardsService {
 		List<Attraction> allAttractions = gpsUtil.getAttractions();
 		tourGuideService.tracker.stopTracking();
 
-		int top5 = tourGuideService.getNearByAttractions(visitedLocation, allAttractions, true).size();
+		int top5 = tourGuideService.getNearByAttractions(visitedLocation, allAttractions, user).size();
 
 		assertEquals(5, top5);
 	}

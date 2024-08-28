@@ -1,5 +1,9 @@
 package com.openclassrooms.tourguide.user;
 
+import gpsUtil.location.Attraction;
+
+import java.util.UUID;
+
 /**
  * This model represents the extra information requested for the json on top of the standard reply for the top 5 destinations most close to the user
  * the user latest position is going to be repeated as it takes the latest one since the qyery is done
@@ -10,9 +14,6 @@ public class UserExtraInfo {
     private int rewardPoints;
     private double userLongitude;
     private double userLatitude;
-
-    public UserExtraInfo() {
-    }
 
     public UserExtraInfo(double distance, int rewardPoints, double userLongitude, double userLatitude) {
         this.distance = distance;

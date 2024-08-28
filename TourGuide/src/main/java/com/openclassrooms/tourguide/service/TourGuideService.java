@@ -37,7 +37,7 @@ public class TourGuideService {
     private final TripPricer tripPricer = new TripPricer();
     public final Tracker tracker;
     boolean testMode = true;
-    private final ExecutorService executorService = Executors.newFixedThreadPool(100);
+    private final ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
 
     public TourGuideService(GpsUtil gpsUtil, RewardsService rewardsService) {
         this.gpsUtil = gpsUtil;
@@ -61,7 +61,7 @@ public class TourGuideService {
 
     public VisitedLocation getUserLocation(User user) {
         Object visitedLocation = (user.getVisitedLocations().size() > 0) ? user.getLastVisitedLocation()
-                :  trackUserLocation(user);
+                : trackUserLocation(user);
         return (VisitedLocation) visitedLocation;
     }
 
@@ -114,6 +114,7 @@ public class TourGuideService {
 
     /**
      * It gathers the user location. It applies then compose and then apply to ensure it awaits for results of calcualte rewards
+     *
      * @param user
      * @return visited location
      * //technical doc of different approaches :
@@ -127,14 +128,13 @@ public class TourGuideService {
             user.addToVisitedLocations(visitedLocation);
             return visitedLocation;
         }, executorService).thenCompose(visitedLocation -> {
-          //  System.out.println("Calculating rewards after tracking location.");
+            //  System.out.println("Calculating rewards after tracking location.");
             return rewardsService.calculateRewards(user).thenApply(v -> {
-               // System.out.println("Completed reward calculation.");
+                // System.out.println("Completed reward calculation.");
                 return visitedLocation;
             });
         });
     }
-
 
 
     /**
@@ -152,9 +152,11 @@ public class TourGuideService {
      */
 
     // Original method (kept for backward compatibility)
-    public Map<Attraction, Double> getNearByAttractions(VisitedLocation visitedLocation, List<Attraction> allAttractions, boolean flag) {
+    /**public Map<Attraction, Double> getNearByAttractions(VisitedLocation visitedLocation, boolean flag) {
+        List<Attraction> allAttractions = gpsUtil.getAttractions();
+
         List<Double> distances = allAttractions.parallelStream()
-                .map(attraction -> rewardsService.getDistance(new Location(attraction.latitude, attraction.longitude), visitedLocation.location))
+                //.map(attraction -> rewardsService.getDistance(new Location(attraction.latitude, attraction.longitude), visitedLocation.location))
                 .toList();
 
         Map<Attraction, Double> consolidated = new HashMap<>();
@@ -174,6 +176,7 @@ public class TourGuideService {
                         LinkedHashMap::new));
     }
 
+
     /**
      * This method sents the whole information for the json including the new values required (
      *
@@ -183,35 +186,35 @@ public class TourGuideService {
      * @return Map with all the attractions, reward points, closest ones
      */
     public Map<Attraction, UserExtraInfo> getNearByAttractions(VisitedLocation visitedLocation, List<Attraction> allAttractions, User user) throws NullPointerException {
-        List<Double> distances = allAttractions.parallelStream()
+        final List<Double> distances = allAttractions.parallelStream()
                 .map(attraction -> rewardsService.getDistance(new Location(attraction.latitude, attraction.longitude), visitedLocation.location))
                 .toList();
 
-        Map<Attraction, UserExtraInfo> consolidated = new HashMap<>();
+        allAttractions = allAttractions.stream()
+                .sorted(Comparator.comparing(attraction -> rewardsService.getDistance(new Location(attraction.latitude, attraction.longitude), visitedLocation.location)))
+                .limit(5)
+                .toList();
+
+        double userLongitude = user.getLastVisitedLocation().location.latitude;
+        double userLatitude = user.getLastVisitedLocation().location.longitude;
+
+        Map<Attraction, UserExtraInfo> consolidated = new ConcurrentHashMap<>();
         //for (int i = 0; i < distances.size(); i++) {
         AtomicInteger counter = new AtomicInteger(0); //done for passing the right location - solution: https://gist.github.com/Makesh/a1defe6f1e2692aaa196
+
         allAttractions.parallelStream().forEach(attraction -> { //refactored for performance optimization
-            double userLongitude = user.getLastVisitedLocation().location.latitude;
-            double userLatitude = user.getLastVisitedLocation().location.longitude;
-            int reward = rewardsService.getRewardPoints(attraction, user);
+            CompletableFuture<Integer> rewardPoints = rewardsService.getRewardPointsAsync(attraction, user);
+            consolidated.put(attraction,
+                                new UserExtraInfo(
+                                        distances.get(counter.getAndIncrement()),
+                                        rewardPoints.join(), // TODO -- Here's the bottleneck
+                                        userLongitude,
+                                        userLatitude));
+                    });
 
-            consolidated.put(attraction, new UserExtraInfo(
-                    distances.get(counter.getAndIncrement()),
-                    reward,
-                    userLongitude,
-                    userLatitude
-            ));
-        });
 
-        return consolidated.entrySet()
-                .parallelStream()
-                .sorted(Map.Entry.comparingByValue(Comparator.comparingDouble(UserExtraInfo::getDistance)))
-                .limit(5)
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (oldValue, newValue) -> oldValue,
-                        LinkedHashMap::new));
+        return consolidated;
+
     }
 
     private void addShutDownHook() {
@@ -302,9 +305,4 @@ public class TourGuideService {
         return Date.from(localDateTime.toInstant(ZoneOffset.UTC));
     }
 
-    public List<Attraction> getAllAttractions() {
-        ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        CompletableFuture<List<Attraction>> attractionsList = CompletableFuture.supplyAsync(() -> gpsUtil.getAttractions(), executor);
-        return attractionsList.join();
-    }
 }
