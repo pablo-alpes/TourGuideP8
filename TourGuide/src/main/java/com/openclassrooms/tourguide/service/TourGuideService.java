@@ -185,35 +185,35 @@ public class TourGuideService {
      * @param user
      * @return Map with all the attractions, reward points, closest ones
      */
-    public Map<Attraction, UserExtraInfo> getNearByAttractions(VisitedLocation visitedLocation, List<Attraction> allAttractions, User user) throws NullPointerException {
-        final List<Double> distances = allAttractions.parallelStream()
-                .map(attraction -> rewardsService.getDistance(new Location(attraction.latitude, attraction.longitude), visitedLocation.location))
-                .toList();
+    public List<UserExtraInfo> getNearByAttractions(VisitedLocation visitedLocation, List<Attraction> allAttractions, User user) throws NullPointerException {
+        final double userLongitude = visitedLocation.location.latitude;
+        final double userLatitude = visitedLocation.location.longitude;
 
-        allAttractions = allAttractions.stream()
-                .sorted(Comparator.comparing(attraction -> rewardsService.getDistance(new Location(attraction.latitude, attraction.longitude), visitedLocation.location)))
+        final List<UserExtraInfo> listNearbyAttractions = allAttractions.parallelStream()
+                .map(attraction -> new UserExtraInfo(attraction,
+                        rewardsService.getDistance(new Location(attraction.latitude, attraction.longitude), new Location(userLongitude, userLatitude)),
+                                0, userLongitude, userLatitude)
+                )
+                .sorted(Comparator.comparingDouble(UserExtraInfo::getDistance))
                 .limit(5)
                 .toList();
 
-        double userLongitude = user.getLastVisitedLocation().location.latitude;
-        double userLatitude = user.getLastVisitedLocation().location.longitude;
+        final AtomicInteger counter = new AtomicInteger(0); //done for passing the right location - solution: https://gist.github.com/Makesh/a1defe6f1e2692aaa196
 
-        Map<Attraction, UserExtraInfo> consolidated = new ConcurrentHashMap<>();
-        //for (int i = 0; i < distances.size(); i++) {
-        AtomicInteger counter = new AtomicInteger(0); //done for passing the right location - solution: https://gist.github.com/Makesh/a1defe6f1e2692aaa196
+        List<CompletableFuture<Void>> futures = listNearbyAttractions.parallelStream()
+                .map(attraction -> {
+                    CompletableFuture<Integer> rewardPointsFuture = rewardsService.getRewardPointsAsync(attraction, user);
+                    return rewardPointsFuture.thenAcceptAsync(rewardPoints -> {
+                        listNearbyAttractions.get(counter.getAndIncrement()).setRewardPoints(rewardPoints);
+                    }, executorService);
+                })
+                .toList();
 
-        allAttractions.parallelStream().forEach(attraction -> { //refactored for performance optimization
-            CompletableFuture<Integer> rewardPoints = rewardsService.getRewardPointsAsync(attraction, user);
-            consolidated.put(attraction,
-                                new UserExtraInfo(
-                                        distances.get(counter.getAndIncrement()),
-                                        rewardPoints.join(), // TODO -- Here's the bottleneck
-                                        userLongitude,
-                                        userLatitude));
-                    });
+        // Wait for all the futures to complete
+        CompletableFuture<Void> allOf = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+        allOf.join();
 
-
-        return consolidated;
+        return listNearbyAttractions;
 
     }
 
@@ -232,7 +232,7 @@ public class TourGuideService {
      **********************************************************************************/
     private static final String tripPricerApiKey = "test-server-api-key";
     // Database connection will be used for external users, but for testing purposes
-// internal users are provided and stored in memory
+    // internal users are provided and stored in memory
     private final Map<String, User> internalUserMap = new HashMap<>();
 
     public void initializeInternalUsers() {

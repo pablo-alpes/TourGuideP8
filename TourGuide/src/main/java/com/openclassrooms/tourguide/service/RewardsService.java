@@ -50,6 +50,7 @@ public class RewardsService {
      * It uses virtual threads to enhance performance and it does that by combining steps since not all steps can be asynchrous for
      * the process
      * We kept the prints for debugging
+     *
      * @param user
      * @return
      */
@@ -73,10 +74,10 @@ public class RewardsService {
                         try {
                             if (isLocationMatch(visitedLocation, attraction)) { // Business rule: checks if visited location is an attraction
                                 //TODO -- Do we need also to add back the nearlocation??
-                            //System.out.println("Calculating reward for: " + attraction);
-                            //System.out.println("rewardPoints: " + rewardPoints);
-                            UserReward userReward = new UserReward(visitedLocation, attraction, rewardPoints);
-                            user.addUserReward(userReward);
+                                //System.out.println("Calculating reward for: " + attraction);
+                                //System.out.println("rewardPoints: " + rewardPoints);
+                                UserReward userReward = new UserReward(visitedLocation, attraction, rewardPoints);
+                                user.addUserReward(userReward);
                             }
                         } catch (Exception e) {
                             //System.err.println("Error adding user reward: " + e.getMessage());
@@ -114,52 +115,58 @@ public class RewardsService {
     }
 
 
-
     public CompletableFuture<Integer> getRewardPointsAsync(Attraction attraction, User user) {
         //for use in the calculate rewards
-        int MAX_RETRIES = 6;
-        return attemptFetchRewardPoints(attraction, user, MAX_RETRIES);
-    }
-
-        public CompletableFuture<Integer> attemptFetchRewardPoints(Attraction attraction, User user, int remainingRetries) {
-
-            final long INITIAL_RETRY_DELAY_MS = 10; // Initial delay in milliseconds
-            final long MAX_RETRY_DELAY_MS = 2000;    // Maximum delay in milliseconds
-            final int MAX_RETRIES = 6;               // Maximum number of retries
-
-            if (remainingRetries <= 0) {
-                // Base case: No retries left
-                return CompletableFuture.completedFuture(0);
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
+            } catch (Exception e) {
+                return 0;
             }
-
-            return CompletableFuture.supplyAsync(() -> {
-                try {
-                    return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
-                } catch (Exception e) {
-                    System.err.println("Error fetching reward points for " + attraction.attractionName + ": " + e.getMessage());
-                    e.printStackTrace();
-                    return 0;
-                }
-            }, virtualPool).handle((result, ex) -> {
-                if (ex != null || result == 0) {
-                    // If there was an exception or result is 0, retry
-                    long delay = Math.min(INITIAL_RETRY_DELAY_MS * (1 << (MAX_RETRIES - remainingRetries)), MAX_RETRY_DELAY_MS);
-                    //System.out.println("Retrying fetch reward points for " + attraction.attractionName + " after " + delay + " ms delay");
-
-                    return CompletableFuture.supplyAsync(() -> {
-                        try {
-                            Thread.sleep(delay); // Sleep for the delay
-                        } catch (InterruptedException interruptedException) {
-                            Thread.currentThread().interrupt();
-                        }
-                        return attemptFetchRewardPoints(attraction, user, remainingRetries - 1).join();
-                    }, virtualPool).join();
-                } else {
-                    return result;
-                }
-            });
+        }, virtualPool);
     }
 
+
+    /**
+     * public CompletableFuture<Integer> attemptFetchRewardPoints(Attraction attraction, User user, int remainingRetries) {
+     * <p>
+     * final long INITIAL_RETRY_DELAY_MS = 10; // Initial delay in milliseconds
+     * final long MAX_RETRY_DELAY_MS = 500;    // Maximum delay in milliseconds
+     * final int MAX_RETRIES = 6;               // Maximum number of retries
+     * <p>
+     * if (remainingRetries <= 0) {
+     * // Base case: No retries left
+     * return CompletableFuture.completedFuture(0);
+     * }
+     * <p>
+     * return CompletableFuture.supplyAsync(() -> {
+     * try {
+     * return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
+     * } catch (Exception e) {
+     * System.err.println("Error fetching reward points for " + attraction.attractionName + ": " + e.getMessage());
+     * e.printStackTrace();
+     * return 0;
+     * }
+     * }, virtualPool).handle((result, ex) -> {
+     * if (ex != null || result == 0) {
+     * // If there was an exception or result is 0, retry
+     * long delay = Math.min(INITIAL_RETRY_DELAY_MS * (1 << (MAX_RETRIES - remainingRetries)), MAX_RETRY_DELAY_MS);
+     * //System.out.println("Retrying fetch reward points for " + attraction.attractionName + " after " + delay + " ms delay");
+     * <p>
+     * return CompletableFuture.supplyAsync(() -> {
+     * try {
+     * Thread.sleep(delay); // Sleep for the delay
+     * } catch (InterruptedException interruptedException) {
+     * Thread.currentThread().interrupt();
+     * }
+     * return attemptFetchRewardPoints(attraction, user, remainingRetries - 1).join();
+     * }, virtualPool).join();
+     * } else {
+     * return result;
+     * }
+     * });
+     * }
+     */
 
 
     //deprecated

@@ -123,7 +123,7 @@ public class TestRewardsService {
 
 		User user = new User(UUID.randomUUID(), "jon", "000", "jon@tourGuide.com");
 		VisitedLocation visitedLocation = tourGuideService.trackUserLocation(user).get();
-		Map<Attraction, UserExtraInfo> attractions = tourGuideService.getNearByAttractions(visitedLocation, allAttractions, user);
+		List <UserExtraInfo> attractions = tourGuideService.getNearByAttractions(visitedLocation, allAttractions, user);
 
 		//ACT
 		String json = jsonReponse.replyJson(attractions);

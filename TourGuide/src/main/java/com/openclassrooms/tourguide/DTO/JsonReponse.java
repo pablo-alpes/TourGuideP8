@@ -23,7 +23,7 @@ public class JsonReponse {
     //    Note: Attraction reward points can be gathered from RewardsCentral
 
 
-    public String replyJson(Map<Attraction, UserExtraInfo> top5Attractions) throws IOException {
+    public String replyJson(List<UserExtraInfo> top5Attractions) throws IOException {
         // Unboxing objects of the keys Technical :: https://stackoverflow.com/questions/8360836/gson-is-there-an-easier-way-to-serialize-a-map
         return gson.toJson(top5Attractions);
         //return top5Attractions.parallelStream().map(gson::toJson).toList();
