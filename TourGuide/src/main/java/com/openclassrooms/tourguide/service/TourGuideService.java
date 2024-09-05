@@ -138,46 +138,6 @@ public class TourGuideService {
 
 
     /**
-     * public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
-     * List<Attraction> nearbyAttractions = new ArrayList<>();
-     * List<Attraction> allAttractions = new ArrayList<>(gpsUtil.getAttractions());
-     * for (Attraction attraction : allAttractions) {
-     * if (rewardsService.isWithinAttractionProximity(attraction, visitedLocation.location)) {
-     * nearbyAttractions.add(attraction);
-     * }
-     * }
-     * <p>
-     * return nearbyAttractions;
-     * }
-     */
-
-    // Original method (kept for backward compatibility)
-    /**public Map<Attraction, Double> getNearByAttractions(VisitedLocation visitedLocation, boolean flag) {
-        List<Attraction> allAttractions = gpsUtil.getAttractions();
-
-        List<Double> distances = allAttractions.parallelStream()
-                //.map(attraction -> rewardsService.getDistance(new Location(attraction.latitude, attraction.longitude), visitedLocation.location))
-                .toList();
-
-        Map<Attraction, Double> consolidated = new HashMap<>();
-
-        for (int i = 0; i < allAttractions.size(); i++) {
-            consolidated.put(allAttractions.get(i), distances.get(i));
-        }
-
-        return consolidated.entrySet()
-                .parallelStream()
-                .sorted(Map.Entry.comparingByValue())
-                .limit(5)
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (oldValue, newValue) -> oldValue,
-                        LinkedHashMap::new));
-    }
-
-
-    /**
      * This method sents the whole information for the json including the new values required (
      *
      * @param visitedLocation
@@ -192,7 +152,7 @@ public class TourGuideService {
         final List<UserExtraInfo> listNearbyAttractions = allAttractions.parallelStream()
                 .map(attraction -> new UserExtraInfo(attraction,
                         rewardsService.getDistance(new Location(attraction.latitude, attraction.longitude), new Location(userLongitude, userLatitude)),
-                                0, userLongitude, userLatitude)
+                        0, userLongitude, userLatitude)
                 )
                 .sorted(Comparator.comparingDouble(UserExtraInfo::getDistance))
                 .limit(5)
@@ -248,14 +208,6 @@ public class TourGuideService {
         logger.debug("Created " + InternalTestHelper.getInternalUserNumber() + " internal test users.");
     }
 
-    /**private void generateUserLocationHistory(User user) {
-     IntStream.range(0, 3).forEach(i -> {
-     user.addToVisitedLocations(new VisitedLocation(user.getUserId(),
-     new Location(generateRandomLatitude(), generateRandomLongitude()), getRandomTime()));
-     });
-     }
-     */
-
     /**
      * Max number locations per user
      * Method refined to assign real locations and not randomwise
@@ -273,20 +225,6 @@ public class TourGuideService {
             //    }
         });
     }
-
-    //This code is in case to generale real attraction instead of random
-    //However performance is hugely impacted
-    //private Attraction generateAttractionLocation() {
-    //  Random rand = new Random();
-    //  List<Attraction> allAttractions = new CopyOnWriteArrayList<>(gpsUtil.getAttractions());
-    //  int attractionRand = rand.nextInt(0, allAttractions.size());
-    //  return allAttractions.get(attractionRand);
-
-
-    //user.addToVisitedLocations(new VisitedLocation(user.getUserId(), attraction, new Date()));
-    // TourGuideService tourGuideService = new TourGuideService(gpsUtil, rewardsService);
-    // tourGuideService.trackUserLocation(user);
-    //}
 
     private double generateRandomLongitude() {
         double leftLimit = -180;

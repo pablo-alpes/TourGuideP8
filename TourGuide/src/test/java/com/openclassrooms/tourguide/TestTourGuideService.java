@@ -97,28 +97,6 @@ public class TestTourGuideService {
 		assertEquals(user.getUserId(), visitedLocation.userId);
 	}
 
-	/**
-	 * Test is deprecated since is substituted by the new method closest 5 locations
-	@Disabled
-	@Test
-	public void getNearbyAttractions() throws Exception {
-		GpsUtil gpsUtil = new GpsUtil();
-		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
-		InternalTestHelper.setInternalUserNumber(0);
-		TourGuideService tourGuideService = new TourGuideService(gpsUtil, rewardsService);
-		List<Attraction> allAttractions = gpsUtil.getAttractions();
-
-		User user = new User(UUID.randomUUID(), "jon", "000", "jon@tourGuide.com");
-		VisitedLocation visitedLocation = tourGuideService.trackUserLocation(user);
-
-		List<Attraction> attractions = tourGuideService.getNearByAttractions(visitedLocation, allAttractions, true).keySet().stream().toList();
-
-		tourGuideService.tracker.stopTracking();
-
-		assertEquals(5, attractions.size());
-	}
-	*/
-
 	@Test
 	@DisplayName("Fixes trips deals to deliver 10 max options to the user")
 	public void getTripDeals() {
