@@ -1,0 +1,42 @@
+services:
+  tourguide:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: tourguide-0.0.1-snapshot.jar
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+    depends_on:
+      - gps
+      - rewards
+      - pricer
+
+  gps:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: /app/gpsUtil.jar
+    ports:
+      - "8081:8081"
+
+  rewards:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: /app/RewardCentral.jar
+    ports:
+      - "8082:8082"
+
+  pricer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        JAR_FILE: /app/TripPricer.jar
+    ports:
+      - "8083:8083"
