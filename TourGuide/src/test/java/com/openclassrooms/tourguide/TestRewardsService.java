@@ -62,35 +62,6 @@ public class TestRewardsService {
 	}
 
 	@Test
-	public void isWithinAttractionProximity() {
-		GpsUtil gpsUtil = new GpsUtil();
-		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
-		Attraction attraction = gpsUtil.getAttractions().get(0);
-		assertTrue(rewardsService.isWithinAttractionProximity(attraction, attraction));
-	}
-
-	//TODO -- Do we need this after implementing the top 5 nearby attractions??
-	@Disabled
-	@Test
-	public void nearAllAttractions() throws Exception {
-		GpsUtil gpsUtil = new GpsUtil();
-		RewardsService rewardsService = new RewardsService(gpsUtil, new RewardCentral());
-		rewardsService.setProximityBuffer(Integer.MAX_VALUE);
-
-		InternalTestHelper.setInternalUserNumber(1);
-		TourGuideService tourGuideService = new TourGuideService(gpsUtil, rewardsService);
-
-		User user = tourGuideService.getAllUsers().get(0);
-		rewardsService.calculateRewards(user).join(); //needs to wait for the futures to complete
-		tourGuideService.getUserLocation(user);
-
-		List<UserReward> userRewards = tourGuideService.getUserRewards(tourGuideService.getAllUsers().get(0));
-		tourGuideService.tracker.stopTracking();
-
-		assertEquals(gpsUtil.getAttractions().size(), userRewards.size());
-	}
-
-	@Test
 	@DisplayName("Sends the top 5 closest destinations to the user based on its last location (new feature)")
 	public void Top5ClosestDestinations() throws Exception {
 		GpsUtil gpsUtil = new GpsUtil();
