@@ -1,0 +1,98 @@
+trigger:
+  branches:
+    include:
+      - dev
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  imageName: 'tourguide'
+  tag: '0.0.1-snapshot'
+  dockerRegistryServiceConnection: 'project8tourguide.azurecr.io'
+
+stages:
+  - stage: Build
+    displayName: 'Build and Push Docker Image'
+    jobs:
+      - job: Build
+        displayName: 'Build Docker Image'
+        steps:
+          - script: |
+              sudo apt-get update
+              sudo apt-get install -y wget maven docker-compose
+              
+              # Install JDK 22
+              sudo mkdir -p /usr/lib/jvm
+              wget https://download.oracle.com/java/22/latest/jdk-22_linux-x64_bin.tar.gz
+              sudo tar -vxzf jdk-22_linux-x64_bin.tar.gz -C /usr/lib/jvm
+              sudo update-alternatives --install /usr/bin/java java /usr/lib/jvm/jdk-22.0.2/bin/java 1
+              echo 1 | sudo update-alternatives --config java
+              sudo update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/jdk-22.0.2/bin/javac 1
+              echo 1 | sudo update-alternatives --config javac
+              sudo update-alternatives --install /usr/bin/jar jar /usr/lib/jvm/jdk-22.0.2/bin/jar 1
+              echo 1 | sudo update-alternatives --config jar
+              
+              java -version
+            displayName: 'Install JDK 22 Manually'
+
+          - script: |
+              # Prepare directories and copy dependencies
+              sudo mkdir -p ./TourGuide/libs
+              ls -R 
+              cp ./TourGuide/libs/*.jar ./TourGuide/libs/
+              
+              # Install Maven
+              sudo apt-get install -y maven
+              
+              # Install JAR files into local Maven repository
+              mvn install:install-file -Dfile=./TourGuide/libs/gpsUtil.jar -DgroupId=gpsUtil -DartifactId=gpsUtil -Dversion=1.0.0 -Dpackaging=jar
+              mvn install:install-file -Dfile=./TourGuide/libs/RewardCentral.jar -DgroupId=rewardCentral -DartifactId=rewardCentral -Dversion=1.0.0 -Dpackaging=jar
+              mvn install:install-file -Dfile=./TourGuide/libs/TripPricer.jar -DgroupId=tripPricer -DartifactId=tripPricer -Dversion=1.0.0 -Dpackaging=jar
+            displayName: 'Install Dependencies'
+
+          - task: Maven@4
+            displayName: 'Maven Package'
+            inputs:
+              mavenPomFile: 'TourGuide/pom.xml'
+              #options: '-DskipTests'
+              goals: 'spring-boot:build-image'
+              publishJUnitResults: true
+              testResultsFiles: '**/surefire-reports/TEST-*.xml'
+              javaHomeOption: 'Path'
+              jdkDirectory: '/usr/lib/jvm/jdk-22.0.2'
+              mavenVersionOption: 'Default'
+              mavenAuthenticateFeed: false
+              effectivePomSkip: false
+              sonarQubeRunAnalysis: false
+
+          - task: DockerCompose@1
+            inputs:
+              containerregistrytype: 'Azure Container Registry'
+              azureSubscription: 'project8tourguide.azurecr.io'
+              azureContainerRegistry: '{"loginServer":"project8tourguide.azurecr.io", "id" : "/subscriptions/6858b1f1-f7a6-4d1b-a1c6-9f8181ab8e4d/resourceGroups/tourguide/providers/Microsoft.ContainerRegistry/registries/project8tourguide"}'
+              dockerComposeFile: '**/docker-compose.yml'
+              projectName: 'tourguide'
+              action: 'Build services'
+
+          - task: DockerCompose@1
+            inputs:
+              containerregistrytype: 'Azure Container Registry'
+              azureSubscription: 'project8tourguide.azurecr.io'
+              azureContainerRegistry: '{"loginServer":"project8tourguide.azurecr.io", "id" : "/subscriptions/6858b1f1-f7a6-4d1b-a1c6-9f8181ab8e4d/resourceGroups/tourguide/providers/Microsoft.ContainerRegistry/registries/project8tourguide"}'
+              dockerComposeFile: '**/docker-compose.yml'
+              projectName: 'tourguide'
+              action: 'Push services'
+
+          # Publish code coverage results v2
+          # Publish any of the code coverage results from a build.
+          - task: PublishCodeCoverageResults@2
+            inputs:
+              summaryFileLocation: '/drop'
+
+
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Build.SourcesDirectory)' # Adjust if your file is in a subfolder
+              artifact: 'drop'
+              publishLocation: 'pipeline'
